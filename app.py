@@ -39,12 +39,6 @@ index = pinecone.Index(index_name)
 
 
 
-
-
-
-
-
-
 # function search document data with openai embedding
 def search_docs(user_query, threshold=0.8):
     xq = get_embedding(
@@ -52,7 +46,7 @@ def search_docs(user_query, threshold=0.8):
         engine="text-embedding-ada-002" # engine should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
     )
 
-    res = index.query([xq], top_k=40, include_metadata=True)
+    res = index.query([xq], top_k=500, include_metadata=True)
 
     # df["similarities"] = df.ada_v2.apply(lambda x: cosine_similarity(x, embedding))
 
@@ -74,6 +68,7 @@ def search_docs(user_query, threshold=0.8):
 
     # Create a DataFrame from the transformed data
     df = pd.DataFrame(transformed_data)
+    df = df[df['score']>threshold].sort_values("score", ascending=False)
     return df
 
 # Load the data
@@ -231,7 +226,7 @@ index_page = html.Div([
             dbc.NavItem(dbc.NavLink("Logout", href="#", id='logout-button')),
             html.Div(id='dummy-output'),  # Dummy output to trigger the callback
         ],
-        brand="AI-Powered Search on WTO TPR Reports",
+        brand="AI-Powered Search on WTO TPR Reports V0.5",
         brand_href="/dashboard/",
         color="primary",
         dark=True,
