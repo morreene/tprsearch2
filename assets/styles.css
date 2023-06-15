@@ -1,0 +1,16 @@
+/* styles.css */
+.search-container {
+    text-align: center;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: all 0.5s ease;
+}
+
+.results-container {
+    margin-top: 100px;
+    text-align: center;
+}
+
+.offcanvas {
+    width: 600px !important;
+}
