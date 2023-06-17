@@ -56,3 +56,11 @@
 .info-row .author {
     margin-left: 10px;
 }
+
+
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }

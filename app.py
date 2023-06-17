@@ -65,20 +65,79 @@ def search_docs(user_query, threshold=0.8):
 
     # Create a DataFrame from the transformed data
     df = pd.DataFrame(transformed_data)
+    print(df.dtypes)
     df = df[df['score']>threshold].sort_values("score", ascending=False)
+    
+    # df['date'] = df['date'].dt.strftime('%Y-%m-%d')
+    df['date'] = df['date'].astype(str)
+    df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
 
-    url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    df['text'] = df['text'].str.replace(url_pattern, '', regex=True)
+
+
+    # url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    # df['text'] = df['text'].str.replace(url_pattern, '', regex=True)
 
     return df
 
 
+# Functions for retrieval augmented generative question answering
+
+def complete(prompt):
+    # query text-davinci-003
+    res = openai.Completion.create(
+        engine='text-davinci-003',
+        prompt=prompt,
+        temperature=0,
+        max_tokens=400,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        stop=None
+    )
+    return res['choices'][0]['text'].strip()
 
 
+limit = 10000
 
+def retrieve(query):
+    res = openai.Embedding.create(
+        input=[query],
+        engine='text-embedding-ada-002'
+    )
 
+    # retrieve from Pinecone
+    xq = res['data'][0]['embedding']
 
+    # get relevant contexts
+    res = index.query(xq, top_k=10, include_metadata=True)
+    contexts = [
+        x['metadata']['text'] for x in res['matches']
+    ]
 
+    # build our prompt with the retrieved contexts included
+    prompt_start = (
+        "Answer the question based on the context below.\n\n"+
+        "Context:\n"
+    )
+    prompt_end = (
+        f"\n\nQuestion: {query}\nAnswer:"
+    )
+    # append contexts until hitting limit
+    for i in range(1, len(contexts)):
+        if len("\n\n---\n\n".join(contexts[:i])) >= limit:
+            prompt = (
+                prompt_start +
+                "\n\n---\n\n".join(contexts[:i-1]) +
+                prompt_end
+            )
+            break
+        elif i == len(contexts)-1:
+            prompt = (
+                prompt_start +
+                "\n\n---\n\n".join(contexts) +
+                prompt_end
+            )
+    return prompt
 
 
 
@@ -180,10 +239,10 @@ sidebar = html.Div([
             dbc.Nav(
                 [
                     dbc.NavLink("Search", href="/page-1", id="page-1-link"),
-                    dbc.NavLink("Q&A", href="/page-2", id="page-2-link"),
-                    dbc.NavLink("Reference Tables", href="/page-3", id="page-3-link"),
-                    dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
-                    dbc.NavLink("Help", href="/page-5", id="page-5-link"),
+                    dbc.NavLink("Chat & Query", href="/page-2", id="page-2-link"),
+                    # dbc.NavLink("Reference Tables", href="/page-3", id="page-3-link"),
+                    # dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
+                    # dbc.NavLink("Help", href="/page-5", id="page-5-link"),
                     dbc.NavLink("Logout", href="/logout", active="exact"),  # Add a logout link
                 ],
                 vertical=True,
@@ -214,14 +273,14 @@ content = html.Div(id="page-content")
 # this callback uses the current pathname to set the active state of the
 # corresponding nav link to true, allowing users to tell see page they are on
 @app.callback(
-    [Output(f"page-{i}-link", "active") for i in range(1, 6)],
+    [Output(f"page-{i}-link", "active") for i in range(1, 3)],
     [Input("url", "pathname")],
 )
 def toggle_active_links(pathname):
     if pathname == "/":
         # Treat page 1 as the homepage / index
         return True, False, False, False, False
-    return [pathname == f"/page-{i}" for i in range(1, 6)]
+    return [pathname == f"/page-{i}" for i in range(1, 3)]
 
 
 
@@ -287,6 +346,21 @@ app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Location(id='logout-url', refresh=False),  # Added logout URL component
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # login facet
     dbc.Container(
         dbc.Row(
@@ -338,7 +412,7 @@ app.layout = html.Div([
                 width=6,
                 className="mt-5",
             )
-        ), id='login-facet',
+        ), id='login-facet',className="login-page",
     ),
 
     # dbc.Input(id='username', placeholder='username', type='text'),
@@ -382,8 +456,6 @@ def render_page_content(pathname, logout_pathname):
         # return html.P("This is the content of page after login"), '/page-1'
         return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"
     elif pathname == "/page-1":
-        # return html.P("This is the content of page 1. Yay!"), pathname
-
         return dbc.Container([
             dbc.Row([
                 html.Br(),
@@ -447,7 +519,7 @@ def render_page_content(pathname, logout_pathname):
                         * interdictions d'importer ou d'exporter
                         * Πολιτικές που ευνοούν τις μικρές επιχειρήσεις
 
-                        The search is based on 126 TPR reports issued since 2015, including a total 44103 paragraphs.
+                        The search is based on 204 Trade Policy Review Secretariat reports issued since 2015, including a total 100,390 paragraphs.
                         '''
                         ),
                 ], width=12),
@@ -462,7 +534,7 @@ def render_page_content(pathname, logout_pathname):
                         # html.Div(id="search-results", className="results"),
                         dcc.Loading(id="loading", type="default", children=html.Div(id="search-results"), fullscreen=False),
                     ], width=12),
-            ], justify="center", className="header"),
+            ], justify="center"),
         ]), pathname
 
 
@@ -471,7 +543,65 @@ def render_page_content(pathname, logout_pathname):
 
 
     elif pathname == "/page-2":
-        return html.P("Oh cool, this is page 2!"), pathname
+        return dbc.Container([
+            dbc.Row([
+                html.Br(),
+                html.Br(),
+                html.Br(),
+                html.Br(),
+                html.Br(),
+                html.Br(),
+            ], justify="center", id='top-space2'),
+            dbc.Row([
+                dbc.Col(
+                        dbc.InputGroup([
+                                dbc.Input(id="search-box2", type="text", placeholder="Enter search query, e.g. subsidies and government support to fossil feul and energy", ),
+                                dbc.Button(" Query ChatGPT and TPR data ", id="search-button2", n_clicks=0,
+                                                #    className="btn btn-primary mt-3", 
+                                            ),
+                            ]
+                        ), width=12,
+                    ),
+                ], justify="center", className="header", id='search-container2'
+            ),
+
+
+            html.Br(),
+            html.Br(),
+            dbc.Row([
+                dbc.Col([
+                    dcc.Markdown(
+                        '''
+                            - How countries protect biodiversity in their trade policy
+                            - How tariff rate quota is administered by WTO members
+                            - how WTO members subsidize energy and fossil fuel sector
+                            - how governments promote environmental services
+                            - how governments regulate wildlife trade
+                            - what is the circular economy
+                            - which countries have the most trade restrictions
+                            - which countries have the most export restrictions
+                            - which countries provide the most export subsidies, in the last three years
+                            - which members have export tariffs or duties
+                        
+                                                                        '''
+                        ),
+                ], width=12),
+            ], justify="center", className="header", id='sample-queries2'),
+
+            html.Br(),
+            html.Br(),
+
+            dbc.Row([ 
+                # html.Div(id="search-results", className="results"),
+                dbc.Col([
+                        # html.Div(id="search-results", className="results"),
+                        dcc.Loading(id="loading2", type="default", children=html.Div(id="search-results2"), fullscreen=False),
+                    ], width=12),
+            ], justify="center"),
+        ]), pathname
+
+
+
     else:
         return html.P("404: Not found"), pathname
         # return dbc.JumbHotron(
@@ -528,8 +658,11 @@ def search(n_clicks, search_terms, threshold):
 
         # matches['similarities'] = matches['similarities'].round(3)
         # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-        matches = matches[['symbol','member','date','topic', 'text','score']]
-        matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
+        # matches = matches[['symbol','member','date','topic', 'text','score']]
+        # matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
+
+        matches = matches[['meta', 'text']]
+        matches.columns = ['Meta','Text (Paragraph)']
 
 
     # Search the dataframe for matching rows
@@ -544,7 +677,9 @@ def search(n_clicks, search_terms, threshold):
     #     matches = None
 
     # Display the results in a datatable
-    return html.Div([
+    return html.Div(style={'width': '100%'},
+                     children=[
+                         html.P(len(matches)),
             dash_table.DataTable(
                     id="search-results-table",
                     columns=[{"name": col, "id": col} for col in matches.columns],
@@ -566,18 +701,18 @@ def search(n_clicks, search_terms, threshold):
                     page_action="native",
                     page_current= 0,
                     page_size= 20,
-
+                    style_table={'width': '900px'},
                     style_header={'fontWeight': 'bold'},
-
                     style_cell={
-                        'height': 'auto',
-                        'minWidth': '50px', 
-                        'maxWidth': '800px',
-                        # 'width': '100px',
-                        'whiteSpace': 'normal',
+                        # 'height': 'auto',
+                        # 'minWidth': '50px', 
+                        # 'maxWidth': '800px',
+                        # # 'width': '100px',
+                        # 'whiteSpace': 'normal',
                         'textAlign': 'left',
                         'fontSize': '14px',
-                        'verticalAlign': 'top'
+                        'verticalAlign': 'top',
+                        'whiteSpace': 'pre-line'
                     },
                     style_cell_conditional=[
                         # {'if': {'column_id': 'Symbol'},
@@ -589,7 +724,7 @@ def search(n_clicks, search_terms, threshold):
                         # {'if': {'column_id': 'Section/Topic'},
                         #  'width': '200px'},
                         {'if': {'column_id': 'Text (Paragraph)'},
-                         'width': '600px'},
+                         'width': '1000px'},
                         # {'if': {'column_id': 'Score'},
                         #  'width': '80px', 'textAlign': 'right'},
                     ],
@@ -600,9 +735,7 @@ def search(n_clicks, search_terms, threshold):
                         }
                     ],
                     style_as_list_view=True,
-                )
-            ]
-            
+                )]
             ), {'display': 'none'}, {'display': 'none'}
 #################################################
 # end of function page
@@ -614,6 +747,124 @@ def search(n_clicks, search_terms, threshold):
 
 
 
+
+
+#################################################
+# Chat page
+#################################################
+
+# call back for returning results
+# call back for returning results
+@app.callback(
+        [Output("search-results2", "children"),  
+         Output("top-space2", "style"),
+         Output("sample-queries2", "style")
+         ],
+        [Input("search-button2", "n_clicks")], 
+        [State("search-box2", "value"),
+        # State('my-range-slider', 'value')
+        ]
+        )
+def chat(n_clicks, search_terms):
+    # Check if the search button was clicked
+    if n_clicks <=0 or search_terms=='' or search_terms is None:
+        return "", {'display': 'block'}, None
+    else:
+        # matches = search_docs(search_terms, threshold = threshold[0])
+
+        # # matches['similarities'] = matches['similarities'].round(3)
+        # # matches['text'] = matches['ParaID'] + ' ' + matches['text']
+        # # matches = matches[['symbol','member','date','topic', 'text','score']]
+        # # matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
+
+        # matches = matches[['meta', 'text']]
+        # matches.columns = ['Meta','Text (Paragraph)']
+        chatgpt = complete(search_terms)
+
+        query_with_contexts = retrieve(search_terms)
+        chatgpttpr = complete(query_with_contexts)
+
+    # Search the dataframe for matching rows
+    # if search_terms:
+    #     matches = search_docs(search_terms, threshold = threshold[0])
+
+    #     # matches['similarities'] = matches['similarities'].round(3)
+    #     # matches['text'] = matches['ParaID'] + ' ' + matches['text']
+    #     matches = matches[['symbol','member','date','topic', 'text','score']]
+    #     matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
+    # else:
+    #     matches = None
+
+    # Display the results in a datatable
+    return html.Div(
+        children=[
+        html.H4('chatgpt'),
+        html.P(chatgpt),
+        html.H4('chatgpt + TPR'),
+        html.P(chatgpttpr),]
+        # style={'width': '100%'},
+        #              children=[
+        #                  html.P(len(matches)),
+        #     dash_table.DataTable(
+        #             id="search-results-table",
+        #             columns=[{"name": col, "id": col} for col in matches.columns],
+        #             data=matches.to_dict("records"),
+
+        #             editable=False,
+        #             # filter_action="native",
+
+        #             sort_action="native",
+        #             sort_mode="multi",
+                    
+        #             column_selectable=False,
+        #             row_selectable=False,
+        #             row_deletable=False,
+                    
+        #             selected_columns=[],
+        #             selected_rows=[],
+                    
+        #             page_action="native",
+        #             page_current= 0,
+        #             page_size= 20,
+        #             style_table={'width': '900px'},
+        #             style_header={'fontWeight': 'bold'},
+        #             style_cell={
+        #                 # 'height': 'auto',
+        #                 # 'minWidth': '50px', 
+        #                 # 'maxWidth': '800px',
+        #                 # # 'width': '100px',
+        #                 # 'whiteSpace': 'normal',
+        #                 'textAlign': 'left',
+        #                 'fontSize': '14px',
+        #                 'verticalAlign': 'top',
+        #                 'whiteSpace': 'pre-line'
+        #             },
+        #             style_cell_conditional=[
+        #                 # {'if': {'column_id': 'Symbol'},
+        #                 #  'width': '50px'},
+        #                 # {'if': {'column_id': 'Member'},
+        #                 #  'width': '90px'},
+        #                 # {'if': {'column_id': 'Date'},
+        #                 #  'width': '80px'},
+        #                 # {'if': {'column_id': 'Section/Topic'},
+        #                 #  'width': '200px'},
+        #                 {'if': {'column_id': 'Text (Paragraph)'},
+        #                  'width': '1000px'},
+        #                 # {'if': {'column_id': 'Score'},
+        #                 #  'width': '80px', 'textAlign': 'right'},
+        #             ],
+        #             style_data_conditional=[
+        #                 {
+        #                     'if': {'row_index': 'odd'},
+        #                     'backgroundColor': 'rgb(250, 250, 250)',
+        #                 }
+        #             ],
+        #             style_as_list_view=True,
+        #         )]
+            ), {'display': 'none'}, {'display': 'none'}
+#################################################
+# end of function page
+#################################################
 
 
 
