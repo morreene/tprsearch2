@@ -1,11 +1,8 @@
 from flask import Flask, session
 from flask_session import Session
 from dash import Dash, dcc, html
-import dash
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
-# to delete dash_table
-from dash import html, dcc, dash_table
 
 import pandas as pd
 import openai
@@ -66,10 +63,6 @@ def search_docs(user_query, threshold=0.8):
     # Create a DataFrame from the transformed data
     df = pd.DataFrame(transformed_data)
     df = df[df['score']>threshold].sort_values("score", ascending=False)
-
-    url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    df['text'] = df['text'].str.replace(url_pattern, '', regex=True)
-
     return df
 
 
@@ -382,94 +375,7 @@ def render_page_content(pathname, logout_pathname):
         # return html.P("This is the content of page after login"), '/page-1'
         return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"
     elif pathname == "/page-1":
-        # return html.P("This is the content of page 1. Yay!"), pathname
-
-        return dbc.Container([
-            dbc.Row([
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
-            ], justify="center", id='top-space'),
-            dbc.Row([
-                dbc.Col(
-                        dbc.InputGroup([
-                                dbc.Input(id="search-box", type="text", placeholder="Enter search query, e.g. subsidies and government support to fossil feul and energy", ),
-                                dbc.Button(" Search ", id="search-button", n_clicks=0,
-                                                #    className="btn btn-primary mt-3", 
-                                            ),
-                            ]
-                        ), width=12,
-                    ),
-                ], justify="center", className="header", id='search-container'
-            ),
-
-            dbc.Row([
-                dbc.Col([
-                            html.Label("Return results with similarity score between:", className="text-end")
-                        ], width=2, style={'text-align':'right', 'margin-top':'15px'},   # className="align-self-right"
-                    ),
-                dbc.Col([
-                    dcc.RangeSlider(
-                        id='my-range-slider',
-                        min=0.5,
-                        max=1,
-                        step=0.1,
-                        value=[0.8, 1],
-                        marks={
-                            0.5: '0.5',
-                            0.6: '0.6',
-                            0.7: '0.7',
-                            0.8: '0.8',
-                            0.9: '0.9',
-                            1: '1'
-                        }, # className="mx-0 px-0"  # Remove margin/padding
-                    )
-                ], width=6,style={'margin-top':'20px'},)
-            ],justify="center", ),
-
-            html.Br(),
-            html.Br(),
-            dbc.Row([
-                dbc.Col([
-                    dcc.Markdown(
-                        '''
-                        Be clear and specific when crafting your query. There's no need to worry about whether the words or phrases will exactly match the text you want to find. 
-                        You can use English, French, Spanish, Arabic, German and other languages. Search query examples:
-                        * subsidies and government supports on fossil fuel and energy
-                        * find policies related to MSME, SME or small businesses in Africa
-                        * any competition policy related to high-tech sector
-                        * quantatitive restrictions (with typo)
-                        * policies supporting ecommerce
-                        * الإعانات والدعم الحكومي للوقود الأحفوري والطاقة
-                        * interdictions d'importer ou d'exporter
-                        * Πολιτικές που ευνοούν τις μικρές επιχειρήσεις
-
-                        The search is based on 126 TPR reports issued since 2015, including a total 44103 paragraphs.
-                        '''
-                        ),
-                ], width=12),
-            ], justify="center", className="header", id='sample-queries'),
-
-            html.Br(),
-            html.Br(),
-
-            dbc.Row([ 
-                # html.Div(id="search-results", className="results"),
-                dbc.Col([
-                        # html.Div(id="search-results", className="results"),
-                        dcc.Loading(id="loading", type="default", children=html.Div(id="search-results"), fullscreen=False),
-                    ], width=12),
-            ], justify="center", className="header"),
-        ]), pathname
-
-
-
-
-
-
+        return html.P("This is the content of page 1. Yay!"), pathname
     elif pathname == "/page-2":
         return html.P("Oh cool, this is page 2!"), pathname
     else:
@@ -481,164 +387,6 @@ def render_page_content(pathname, logout_pathname):
         #         html.P(f"The pathname {pathname} was not recognised..."),
         #     ]
         # ), pathname
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#################################################
-# search page
-#################################################
-
-# call back for returning results
-# call back for returning results
-@app.callback(
-        [Output("search-results", "children"),  
-         Output("top-space", "style"),
-         Output("sample-queries", "style")
-         ],
-        [Input("search-button", "n_clicks")], 
-        [State("search-box", "value"),
-        State('my-range-slider', 'value')]
-        )
-def search(n_clicks, search_terms, threshold):
-    # Check if the search button was clicked
-    if n_clicks <=0 or search_terms=='' or search_terms is None:
-        return "", {'display': 'block'}, None
-    else:
-        matches = search_docs(search_terms, threshold = threshold[0])
-
-        # matches['similarities'] = matches['similarities'].round(3)
-        # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-        matches = matches[['symbol','member','date','topic', 'text','score']]
-        matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
-
-
-    # Search the dataframe for matching rows
-    # if search_terms:
-    #     matches = search_docs(search_terms, threshold = threshold[0])
-
-    #     # matches['similarities'] = matches['similarities'].round(3)
-    #     # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-    #     matches = matches[['symbol','member','date','topic', 'text','score']]
-    #     matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
-    # else:
-    #     matches = None
-
-    # Display the results in a datatable
-    return html.Div([
-            dash_table.DataTable(
-                    id="search-results-table",
-                    columns=[{"name": col, "id": col} for col in matches.columns],
-                    data=matches.to_dict("records"),
-
-                    editable=False,
-                    # filter_action="native",
-
-                    sort_action="native",
-                    sort_mode="multi",
-                    
-                    column_selectable=False,
-                    row_selectable=False,
-                    row_deletable=False,
-                    
-                    selected_columns=[],
-                    selected_rows=[],
-                    
-                    page_action="native",
-                    page_current= 0,
-                    page_size= 20,
-
-                    style_header={'fontWeight': 'bold'},
-
-                    style_cell={
-                        'height': 'auto',
-                        'minWidth': '50px', 
-                        'maxWidth': '800px',
-                        # 'width': '100px',
-                        'whiteSpace': 'normal',
-                        'textAlign': 'left',
-                        'fontSize': '14px',
-                        'verticalAlign': 'top'
-                    },
-                    style_cell_conditional=[
-                        # {'if': {'column_id': 'Symbol'},
-                        #  'width': '50px'},
-                        # {'if': {'column_id': 'Member'},
-                        #  'width': '90px'},
-                        # {'if': {'column_id': 'Date'},
-                        #  'width': '80px'},
-                        # {'if': {'column_id': 'Section/Topic'},
-                        #  'width': '200px'},
-                        {'if': {'column_id': 'Text (Paragraph)'},
-                         'width': '600px'},
-                        # {'if': {'column_id': 'Score'},
-                        #  'width': '80px', 'textAlign': 'right'},
-                    ],
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(250, 250, 250)',
-                        }
-                    ],
-                    style_as_list_view=True,
-                )
-            ]
-            
-            ), {'display': 'none'}, {'display': 'none'}
-#################################################
-# end of function page
-#################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -680,4 +428,4 @@ def toggle_collapse(n, is_open):
 
 
 if __name__ == '__main__':
-    app.run_server(port=8888, debug=True)
+    app.run_server(port=8888)

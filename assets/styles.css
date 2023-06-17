@@ -14,3 +14,45 @@
 .offcanvas {
     width: 600px !important;
 }
+
+
+
+
+/* test */
+.result-info {
+    margin-bottom: 10px;
+}
+
+.result-info strong {
+    font-weight: bold;
+}
+
+.result-info p {
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
+.result-info::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.result-info div {
+    float: left;
+    width: 50%;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-row .time {
+    font-weight: bold;
+}
+
+.info-row .author {
+    margin-left: 10px;
+}
