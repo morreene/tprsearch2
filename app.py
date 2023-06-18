@@ -37,17 +37,13 @@ pinecone.init(
 index = pinecone.Index(index_name)
 
 ##### function search document data with openai embedding
-def search_docs(user_query, threshold=0.8):
+def search_docs(user_query, top=200):
     xq = get_embedding(
         user_query,
         engine="text-embedding-ada-002" # engine should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
     )
 
-    res = index.query([xq], top_k=500, include_metadata=True)
-
-    # df["similarities"] = df.ada_v2.apply(lambda x: cosine_similarity(x, embedding))
-
-    # res = df[df['similarities']>threshold].sort_values("similarities", ascending=False)
+    res = index.query([xq], top_k=top, include_metadata=True)
 
     data = res.to_dict()
     # Create an empty list to store the transformed data
@@ -65,27 +61,25 @@ def search_docs(user_query, threshold=0.8):
 
     # Create a DataFrame from the transformed data
     df = pd.DataFrame(transformed_data)
-    print(df.dtypes)
-    df = df[df['score']>threshold].sort_values("score", ascending=False)
+    # print(df.dtypes)
     
-    # df['date'] = df['date'].dt.strftime('%Y-%m-%d')
     df['date'] = df['date'].astype(str)
-    df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
-
-
-
-    # url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    # df['text'] = df['text'].str.replace(url_pattern, '', regex=True)
-
+    
     return df
 
 
-# Functions for retrieval augmented generative question answering
-
-def complete(prompt):
+##### functions for retrieval augmented generative question answering
+def complete(prompt, engine = 'text-davinci-003'):
+    prompt = 'Please answer the question with no more than 200 words: ' + prompt
+    # engine = 'text-ada-001'
+    # engine = 'text-curie-001'
+    # engine = 'text-davinci-003'
+    # engine = 'gpt-35-turbo'
+    
     # query text-davinci-003
     res = openai.Completion.create(
-        engine='text-davinci-003',
+        # engine='',
+        engine=engine,        
         prompt=prompt,
         temperature=0,
         max_tokens=400,
@@ -94,11 +88,17 @@ def complete(prompt):
         presence_penalty=0,
         stop=None
     )
+    # res = openai.Completion.create(engine=engine, prompt=prompt, max_tokens=200)
     return res['choices'][0]['text'].strip()
 
 
-limit = 10000
 
+
+
+
+
+
+limit = 10000
 def retrieve(query):
     res = openai.Embedding.create(
         input=[query],
@@ -116,7 +116,7 @@ def retrieve(query):
 
     # build our prompt with the retrieved contexts included
     prompt_start = (
-        "Answer the question based on the context below.\n\n"+
+        "Answer the question based on the context below. \n\n"+
         "Context:\n"
     )
     prompt_end = (
@@ -142,12 +142,7 @@ def retrieve(query):
 
 
 
-
-
-
-
-
-
+##### Dash App
 # Hardcoded users (for demo purposes)
 USERS = {"admin": "admin", "w": "w", "wto": "wto"}
 
@@ -195,11 +190,7 @@ app.index_string = """<!DOCTYPE html>
 
 
 sidebar_header = dbc.Row([
-    # dbc.Col(html.H3("Analytical Database", className="display-logo")),
-    html.A([
-            dbc.Col(html.Img(src=app.get_asset_url("logo.png"),  width="180px", style={'margin-left':'15px', 'margin-bottom':'50px'})),
-            ], href="/page-1",
-        ),
+    html.A([dbc.Col(html.Img(src=app.get_asset_url("logo.png"),  width="180px", style={'margin-left':'15px', 'margin-bottom':'50px'}))], href="/page-1"),
     dbc.Col(
         html.Button(
             # use the Bootstrap navbar-toggler classes to style the toggle
@@ -221,53 +212,38 @@ sidebar_header = dbc.Row([
 ])
 
 sidebar = html.Div([
-        sidebar_header,
-        # we wrap the horizontal rule and short blurb in a div that can be
-        # hidden on a small screen
-        html.Div(
-            [
-                # html.Hr(),
-                # html.P(
-                #     "Download integrated tariff and trade data for research and analysis",
-                #     # className="lead",
-                # ),
-            ],
-            id="blurb",
-        ),
-        # use the Collapse component to animate hiding / revealing links
-        dbc.Collapse(
-            dbc.Nav(
-                [
-                    dbc.NavLink("Search", href="/page-1", id="page-1-link"),
-                    dbc.NavLink("Chat & Query", href="/page-2", id="page-2-link"),
-                    # dbc.NavLink("Reference Tables", href="/page-3", id="page-3-link"),
-                    # dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
-                    # dbc.NavLink("Help", href="/page-5", id="page-5-link"),
-                    dbc.NavLink("Logout", href="/logout", active="exact"),  # Add a logout link
-                ],
-                vertical=True,
-                pills=False,
-            ),
-            id="collapse",
-        ),
-        html.Div([
-                html.P(
-                    "V0.5 (20230619)",
-                    # className="lead",
-                ),
-                ],
-                id="blurb-bottom",
-        ),
-    ],
-    id="sidebar",
-)
+                    sidebar_header,
+                    # we wrap the horizontal rule and short blurb in a div that can be
+                    # hidden on a small screen
+                    # html.Div([
+                    #         html.Hr(),
+                    #         html.P(
+                    #             "Download integrated tariff and trade data for research and analysis",
+                    #             # className="lead",
+                    #         ),
+                    #     ],id="blurb",
+                    # ),
+
+                    # use the Collapse component to animate hiding / revealing links
+                    dbc.Collapse(
+                        dbc.Nav([
+                                dbc.NavLink("Search", href="/page-1", id="page-1-link"),
+                                dbc.NavLink("Question & Answer", href="/page-2", id="page-2-link"),
+                                # dbc.NavLink("Reference Tables", href="/page-3", id="page-3-link"),
+                                # dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
+                                # dbc.NavLink("Help", href="/page-5", id="page-5-link"),
+                                dbc.NavLink("Logout", href="/logout", active="exact"),  # Add a logout link
+                            ], vertical=True, pills=False,
+                        ), id="collapse",
+                    ),
+                    html.Div([html.P("V0.5 (20230619)",
+                                # className="lead",
+                            ),],id="blurb-bottom",
+                    ),
+                ], id="sidebar",
+            )
 
 content = html.Div(id="page-content")
-
-
-
-
-
 
 
 # this callback uses the current pathname to set the active state of the
@@ -281,64 +257,6 @@ def toggle_active_links(pathname):
         # Treat page 1 as the homepage / index
         return True, False, False, False, False
     return [pathname == f"/page-{i}" for i in range(1, 3)]
-
-
-
-
-
-
-
-
-# # the style arguments for the sidebar. We use position:fixed and a fixed width
-# SIDEBAR_STYLE = {
-#     "position": "fixed",
-#     "top": 0,
-#     "left": 0,
-#     "bottom": 0,
-#     "width": "16rem",
-#     "padding": "2rem 1rem",
-#     "background-color": "#f8f9fa",
-# }
-
-# # the styles for the main content position it to the right of the sidebar and
-# # add some padding.
-# CONTENT_STYLE = {
-#     "margin-left": "18rem",
-#     "margin-right": "2rem",
-#     "padding": "2rem 1rem",
-# }
-
-# sidebar = html.Div(
-#     [
-#         html.H2("Sidebar", className="display-4"),
-#         html.Hr(),
-#         html.P(
-#             "A simple sidebar layout with navigation links", className="lead"
-#         ),
-#         dbc.Nav(
-#             [
-#                 dbc.NavLink("Home", href="/", active="exact"),
-#                 dbc.NavLink("Page 1", href="/page-1", active="exact"),
-#                 dbc.NavLink("Page 2", href="/page-2", active="exact"),
-#                 dbc.NavLink("Logout", href="/logout", active="exact"),  # Add a logout link
-#             ],
-#             vertical=True,
-#             pills=True,
-#         ),
-#     ],
-#     style=SIDEBAR_STYLE,
-# )
-
-# content = html.Div(id="page-content", style=CONTENT_STYLE)
-
-
-
-
-
-
-
-
-
 
 
 
@@ -368,56 +286,37 @@ app.layout = html.Div([
                 dbc.Card(
                     dbc.CardBody(
                         [
-                            html.H3("Login", className="card-title"),
+                            html.H4("Login TPR ReportDB", className="card-title"),
+                            html.Br(),
                             dbc.Form(
                                 [
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                [
-                                                    dbc.Label("Username", html_for="username"),
-                                                    dbc.Input(
-                                                        type="text",
-                                                        id="username",
-                                                        placeholder="Enter your username",
-                                                    ),
-                                                ],
-                                                className="mb-3",
+                                    dbc.Row([
+                                            dbc.Col([
+                                                    dbc.Label("Username:", html_for="username"),
+                                                    dbc.Input(type="text", id="username", placeholder="Enter your username",  style={"width": 200, "margin-left": 20}),
+                                                ],className="mb-3",
                                             )
                                         ]
                                     ),
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                [
-                                                    dbc.Label("Password", html_for="password"),
-                                                    dbc.Input(
-                                                        type="password",
-                                                        id="password",
-                                                        placeholder="Enter your password",
-                                                    ),
-                                                ],
-                                                className="mb-3",
+                                    dbc.Row([
+                                            dbc.Col([
+                                                    dbc.Label("Password:", html_for="password"),
+                                                    dbc.Input(type="password",  id="password", placeholder="Enter your password",style={"width": 200, "margin-left": 20}),
+                                                ], className="mb-3",
                                             )
                                         ]
                                     ),
-                                    dbc.Button(id='login-button', children='Login', n_clicks=0, color="primary", className="mt-3"),
+                                    dbc.Button(id='login-button', children='Login', n_clicks=0, color="primary", className="mb-3"),
                                 ]
                             ),
                         ]
                     ),
                     className="text-center",
-                    style={"width": "400px", "margin": "auto"},
-                ),
-                width=6,
-                className="mt-5",
+                    style={"width": "500px", "margin": "auto", "background-color": "#e4f5f2"},
+                ), width=6, className="mt-5",
             )
         ), id='login-facet',className="login-page",
     ),
-
-    # dbc.Input(id='username', placeholder='username', type='text'),
-    # dbc.Input(id='password', placeholder='password', type='password'),
-    # dbc.Button(id='login-button', children='Login', n_clicks=0),
 
     html.Div([sidebar, content], id='page-layout', style={'display': 'none'}),
 ])
@@ -457,14 +356,12 @@ def render_page_content(pathname, logout_pathname):
         return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"
     elif pathname == "/page-1":
         return dbc.Container([
+            html.H4("Search WTO TPR Report data with OpenAi embeddings", className="display-about"),
             dbc.Row([
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
-            ], justify="center", id='top-space'),
+                        html.Br(),
+                        html.Br(),
+                    ], justify="center", id='top-space'
+            ),
             dbc.Row([
                 dbc.Col(
                         dbc.InputGroup([
@@ -475,32 +372,56 @@ def render_page_content(pathname, logout_pathname):
                             ]
                         ), width=12,
                     ),
-                ], justify="center", className="header", id='search-container'
+                ], justify="center", 
+                # className="header", 
+                id='search-container'
             ),
 
-            dbc.Row([
-                dbc.Col([
-                            html.Label("Return results with similarity score between:", className="text-end")
-                        ], width=2, style={'text-align':'right', 'margin-top':'15px'},   # className="align-self-right"
+            # dbc.Row([
+            #     dbc.Col([
+            #                 html.Label("Return results with similarity score between:", className="text-end")
+            #             ], width=2, style={'text-align':'right', 'margin-top':'15px'},   # className="align-self-right"
+            #         ),
+            #     dbc.Col([
+            #         dcc.RangeSlider(
+            #             id='my-range-slider',
+            #             min=0.5,
+            #             max=1,
+            #             step=0.1,
+            #             value=[0.8, 1],
+            #             marks={
+            #                 0.5: '0.5',
+            #                 0.6: '0.6',
+            #                 0.7: '0.7',
+            #                 0.8: '0.8',
+            #                 0.9: '0.9',
+            #                 1: '1'
+            #             }, # className="mx-0 px-0"  # Remove margin/padding
+            #         )
+            #     ], width=6,style={'margin-top':'20px'},)
+            # ],justify="center", ),
+
+            dbc.Row(
+                [
+                    dbc.Col(html.Label("Display paragraphs with the highest score:"), width="auto"),
+                    dbc.Col(
+                        dbc.RadioItems(
+                            id="radio-select-top",
+                            options=[
+                                {"label": "Top 100", "value": 100},
+                                {"label": "Top 200", "value": 200},
+                                {"label": "Top 500", "value": 500},
+                            ],
+                            value=200,
+                            inline=True,
+                        ),
+                        width=True,
                     ),
-                dbc.Col([
-                    dcc.RangeSlider(
-                        id='my-range-slider',
-                        min=0.5,
-                        max=1,
-                        step=0.1,
-                        value=[0.8, 1],
-                        marks={
-                            0.5: '0.5',
-                            0.6: '0.6',
-                            0.7: '0.7',
-                            0.8: '0.8',
-                            0.9: '0.9',
-                            1: '1'
-                        }, # className="mx-0 px-0"  # Remove margin/padding
-                    )
-                ], width=6,style={'margin-top':'20px'},)
-            ],justify="center", ),
+                ],
+                align="center",
+                style={"margin-bottom": "10px"},
+            ),
+
 
             html.Br(),
             html.Br(),
@@ -544,11 +465,8 @@ def render_page_content(pathname, logout_pathname):
 
     elif pathname == "/page-2":
         return dbc.Container([
+            html.H4("Q&A with ChatGTP (OpenAI) with and without WTO TPR data", className="display-about"),
             dbc.Row([
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.Br(),
                 html.Br(),
                 html.Br(),
             ], justify="center", id='top-space2'),
@@ -566,24 +484,45 @@ def render_page_content(pathname, logout_pathname):
             ),
 
 
+            dbc.Row(
+                [
+                    dbc.Col(html.Label("Select OpenAI model:"), width="auto"),
+                    dbc.Col(
+                        dbc.RadioItems(
+                            id="radio-select-top2",
+                            options=[
+                                {"label": "text-ada", "value": 'text-ada-001'},
+                                {"label": 'text-curie', "value": 'text-curie-001'},
+                                {"label": 'text-davinci', "value": 'text-davinci-003'},
+                                {"label": 'gpt-35', "value": 'gpt-35-turbo'},
+                            ],
+                            value='text-davinci-003',
+                            inline=True,
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+                style={"margin-bottom": "10px"},
+            ),
+
             html.Br(),
             html.Br(),
             dbc.Row([
                 dbc.Col([
                     dcc.Markdown(
                         '''
-                            - How countries protect biodiversity in their trade policy
-                            - How tariff rate quota is administered by WTO members
-                            - how WTO members subsidize energy and fossil fuel sector
-                            - how governments promote environmental services
-                            - how governments regulate wildlife trade
-                            - what is the circular economy
-                            - which countries have the most trade restrictions
-                            - which countries have the most export restrictions
-                            - which countries provide the most export subsidies, in the last three years
-                            - which members have export tariffs or duties
-                        
-                                                                        '''
+                            - How WTO members protect biodiversity through their trade policy?
+                            - How tariff rate quota (TRQ) is administered by WTO members?
+                            - How WTO members subsidize energy and fossil fuel sector?
+                            - How WTO members promote environmental services?
+                            - How governments regulate wildlife trade?
+                            - How WTO members support the circular economy?
+                            - What trade restrictions are used most by WTO Members?
+                            - Which countries have the most export restrictions?
+                            - Which WTO members provide the export subsidies, in the last three years?
+                            - Which members impose export tariffs or duties?
+                        '''
                         ),
                 ], width=12),
             ], justify="center", className="header", id='sample-queries2'),
@@ -594,23 +533,13 @@ def render_page_content(pathname, logout_pathname):
             dbc.Row([ 
                 # html.Div(id="search-results", className="results"),
                 dbc.Col([
-                        # html.Div(id="search-results", className="results"),
                         dcc.Loading(id="loading2", type="default", children=html.Div(id="search-results2"), fullscreen=False),
                     ], width=12),
             ], justify="center"),
         ]), pathname
 
-
-
     else:
         return html.P("404: Not found"), pathname
-        # return dbc.JumbHotron(
-        #     [
-        #         html.H1("404: Not found", className="text-danger"),
-        #         html.Hr(),
-        #         html.P(f"The pathname {pathname} was not recognised..."),
-        #     ]
-        # ), pathname
 
 
 
@@ -635,10 +564,9 @@ def render_page_content(pathname, logout_pathname):
 
 
 #################################################
-# search page
+#####    Search
 #################################################
 
-# call back for returning results
 # call back for returning results
 @app.callback(
         [Output("search-results", "children"),  
@@ -647,21 +575,18 @@ def render_page_content(pathname, logout_pathname):
          ],
         [Input("search-button", "n_clicks")], 
         [State("search-box", "value"),
-        State('my-range-slider', 'value')]
+        State('radio-select-top', 'value')]
         )
-def search(n_clicks, search_terms, threshold):
+def search(n_clicks, search_terms, top):
     # Check if the search button was clicked
     if n_clicks <=0 or search_terms=='' or search_terms is None:
         return "", {'display': 'block'}, None
     else:
-        matches = search_docs(search_terms, threshold = threshold[0])
-
-        # matches['similarities'] = matches['similarities'].round(3)
-        # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-        # matches = matches[['symbol','member','date','topic', 'text','score']]
-        # matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
-
-        matches = matches[['meta', 'text']]
+        
+        df = search_docs(search_terms, top = top)
+        # score_range = zip(matches['score'].min(), matches['score'].max())
+        df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
+        matches = df[['meta', 'text']]
         matches.columns = ['Meta','Text (Paragraph)']
 
 
@@ -679,81 +604,70 @@ def search(n_clicks, search_terms, threshold):
     # Display the results in a datatable
     return html.Div(style={'width': '100%'},
                      children=[
-                         html.P(len(matches)),
-            dash_table.DataTable(
-                    id="search-results-table",
-                    columns=[{"name": col, "id": col} for col in matches.columns],
-                    data=matches.to_dict("records"),
+                        html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
+                        dash_table.DataTable(
+                                id="search-results-table",
+                                columns=[{"name": col, "id": col} for col in matches.columns],
+                                data=matches.to_dict("records"),
 
-                    editable=False,
-                    # filter_action="native",
+                                editable=False,
+                                # filter_action="native",
 
-                    sort_action="native",
-                    sort_mode="multi",
-                    
-                    column_selectable=False,
-                    row_selectable=False,
-                    row_deletable=False,
-                    
-                    selected_columns=[],
-                    selected_rows=[],
-                    
-                    page_action="native",
-                    page_current= 0,
-                    page_size= 20,
-                    style_table={'width': '900px'},
-                    style_header={'fontWeight': 'bold'},
-                    style_cell={
-                        # 'height': 'auto',
-                        # 'minWidth': '50px', 
-                        # 'maxWidth': '800px',
-                        # # 'width': '100px',
-                        # 'whiteSpace': 'normal',
-                        'textAlign': 'left',
-                        'fontSize': '14px',
-                        'verticalAlign': 'top',
-                        'whiteSpace': 'pre-line'
-                    },
-                    style_cell_conditional=[
-                        # {'if': {'column_id': 'Symbol'},
-                        #  'width': '50px'},
-                        # {'if': {'column_id': 'Member'},
-                        #  'width': '90px'},
-                        # {'if': {'column_id': 'Date'},
-                        #  'width': '80px'},
-                        # {'if': {'column_id': 'Section/Topic'},
-                        #  'width': '200px'},
-                        {'if': {'column_id': 'Text (Paragraph)'},
-                         'width': '1000px'},
-                        # {'if': {'column_id': 'Score'},
-                        #  'width': '80px', 'textAlign': 'right'},
-                    ],
-                    style_data_conditional=[
-                        {
-                            'if': {'row_index': 'odd'},
-                            'backgroundColor': 'rgb(250, 250, 250)',
-                        }
-                    ],
-                    style_as_list_view=True,
-                )]
+                                sort_action="native",
+                                sort_mode="multi",
+                                
+                                column_selectable=False,
+                                row_selectable=False,
+                                row_deletable=False,
+                                
+                                selected_columns=[],
+                                selected_rows=[],
+                                
+                                page_action="native",
+                                page_current= 0,
+                                page_size= 20,
+                                style_table={'width': '900px'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={
+                                    # 'height': 'auto',
+                                    # 'minWidth': '50px', 
+                                    # 'maxWidth': '800px',
+                                    # # 'width': '100px',
+                                    # 'whiteSpace': 'normal',
+                                    'textAlign': 'left',
+                                    'fontSize': '14px',
+                                    'verticalAlign': 'top',
+                                    'whiteSpace': 'pre-line'
+                                },
+                                style_cell_conditional=[
+                                    # {'if': {'column_id': 'Symbol'},
+                                    #  'width': '50px'},
+                                    # {'if': {'column_id': 'Member'},
+                                    #  'width': '90px'},
+                                    # {'if': {'column_id': 'Date'},
+                                    #  'width': '80px'},
+                                    # {'if': {'column_id': 'Section/Topic'},
+                                    #  'width': '200px'},
+                                    {'if': {'column_id': 'Text (Paragraph)'},
+                                    'width': '1000px'},
+                                    # {'if': {'column_id': 'Score'},
+                                    #  'width': '80px', 'textAlign': 'right'},
+                                ],
+                                style_data_conditional=[
+                                    {
+                                        'if': {'row_index': 'odd'},
+                                        'backgroundColor': 'rgb(250, 250, 250)',
+                                    }
+                                ],
+                                style_as_list_view=True,
+                            )
+                        ]
             ), {'display': 'none'}, {'display': 'none'}
-#################################################
-# end of function page
-#################################################
-
-
-
-
-
-
-
-
 
 #################################################
-# Chat page
+#####     Chat page
 #################################################
 
-# call back for returning results
 # call back for returning results
 @app.callback(
         [Output("search-results2", "children"),  
@@ -762,106 +676,109 @@ def search(n_clicks, search_terms, threshold):
          ],
         [Input("search-button2", "n_clicks")], 
         [State("search-box2", "value"),
-        # State('my-range-slider', 'value')
+        State('radio-select-top2', 'value')
         ]
         )
-def chat(n_clicks, search_terms):
+def chat(n_clicks, search_terms, model):
     # Check if the search button was clicked
     if n_clicks <=0 or search_terms=='' or search_terms is None:
         return "", {'display': 'block'}, None
     else:
-        # matches = search_docs(search_terms, threshold = threshold[0])
-
-        # # matches['similarities'] = matches['similarities'].round(3)
-        # # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-        # # matches = matches[['symbol','member','date','topic', 'text','score']]
-        # # matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
-
-        # matches = matches[['meta', 'text']]
-        # matches.columns = ['Meta','Text (Paragraph)']
-        chatgpt = complete(search_terms)
-
+        chatgpt = complete(search_terms, model)
+        # print(chatgpt)
         query_with_contexts = retrieve(search_terms)
-        chatgpttpr = complete(query_with_contexts)
-
-    # Search the dataframe for matching rows
-    # if search_terms:
-    #     matches = search_docs(search_terms, threshold = threshold[0])
-
-    #     # matches['similarities'] = matches['similarities'].round(3)
-    #     # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-    #     matches = matches[['symbol','member','date','topic', 'text','score']]
-    #     matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
-    # else:
-    #     matches = None
-
-    # Display the results in a datatable
+        chatgpttpr = complete(query_with_contexts, model)
     return html.Div(
-        children=[
-        html.H4('chatgpt'),
-        html.P(chatgpt),
-        html.H4('chatgpt + TPR'),
-        html.P(chatgpttpr),]
-        # style={'width': '100%'},
-        #              children=[
-        #                  html.P(len(matches)),
-        #     dash_table.DataTable(
-        #             id="search-results-table",
-        #             columns=[{"name": col, "id": col} for col in matches.columns],
-        #             data=matches.to_dict("records"),
+    dbc.Container(
+        [
+            dbc.Row(
+                [
+                    dbc.Col(html.H4("Answer by OpenAI"), width={"size": 6, "offset": 0}),
+                    dbc.Col(html.H4("Answer by OpenAI + TPR"), width={"size": 6, "offset": 0}),
+                ],
+                justify="between",
+                style={"margin-bottom": "20px"},
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(html.P(dcc.Markdown(chatgpt)), width={"size": 6, "offset": 0}),
+                    dbc.Col(html.P(dcc.Markdown(chatgpttpr)), width={"size": 6, "offset": 0}),
+                ],
+                justify="between",
+            ),
+        ],
+    )
+), {'display': 'none'}, {'display': 'none'}
 
-        #             editable=False,
-        #             # filter_action="native",
 
-        #             sort_action="native",
-        #             sort_mode="multi",
+# html.Div(
+#         children=[
+#         html.H4('chatgpt'),
+#         html.P(chatgpt),
+#         html.H4('chatgpt + TPR'),
+#         html.P(chatgpttpr),]
+#         # style={'width': '100%'},
+#         #              children=[
+#         #                  html.P(len(matches)),
+#         #     dash_table.DataTable(
+#         #             id="search-results-table",
+#         #             columns=[{"name": col, "id": col} for col in matches.columns],
+#         #             data=matches.to_dict("records"),
+
+#         #             editable=False,
+#         #             # filter_action="native",
+
+#         #             sort_action="native",
+#         #             sort_mode="multi",
                     
-        #             column_selectable=False,
-        #             row_selectable=False,
-        #             row_deletable=False,
+#         #             column_selectable=False,
+#         #             row_selectable=False,
+#         #             row_deletable=False,
                     
-        #             selected_columns=[],
-        #             selected_rows=[],
+#         #             selected_columns=[],
+#         #             selected_rows=[],
                     
-        #             page_action="native",
-        #             page_current= 0,
-        #             page_size= 20,
-        #             style_table={'width': '900px'},
-        #             style_header={'fontWeight': 'bold'},
-        #             style_cell={
-        #                 # 'height': 'auto',
-        #                 # 'minWidth': '50px', 
-        #                 # 'maxWidth': '800px',
-        #                 # # 'width': '100px',
-        #                 # 'whiteSpace': 'normal',
-        #                 'textAlign': 'left',
-        #                 'fontSize': '14px',
-        #                 'verticalAlign': 'top',
-        #                 'whiteSpace': 'pre-line'
-        #             },
-        #             style_cell_conditional=[
-        #                 # {'if': {'column_id': 'Symbol'},
-        #                 #  'width': '50px'},
-        #                 # {'if': {'column_id': 'Member'},
-        #                 #  'width': '90px'},
-        #                 # {'if': {'column_id': 'Date'},
-        #                 #  'width': '80px'},
-        #                 # {'if': {'column_id': 'Section/Topic'},
-        #                 #  'width': '200px'},
-        #                 {'if': {'column_id': 'Text (Paragraph)'},
-        #                  'width': '1000px'},
-        #                 # {'if': {'column_id': 'Score'},
-        #                 #  'width': '80px', 'textAlign': 'right'},
-        #             ],
-        #             style_data_conditional=[
-        #                 {
-        #                     'if': {'row_index': 'odd'},
-        #                     'backgroundColor': 'rgb(250, 250, 250)',
-        #                 }
-        #             ],
-        #             style_as_list_view=True,
-        #         )]
-            ), {'display': 'none'}, {'display': 'none'}
+#         #             page_action="native",
+#         #             page_current= 0,
+#         #             page_size= 20,
+#         #             style_table={'width': '900px'},
+#         #             style_header={'fontWeight': 'bold'},
+#         #             style_cell={
+#         #                 # 'height': 'auto',
+#         #                 # 'minWidth': '50px', 
+#         #                 # 'maxWidth': '800px',
+#         #                 # # 'width': '100px',
+#         #                 # 'whiteSpace': 'normal',
+#         #                 'textAlign': 'left',
+#         #                 'fontSize': '14px',
+#         #                 'verticalAlign': 'top',
+#         #                 'whiteSpace': 'pre-line'
+#         #             },
+#         #             style_cell_conditional=[
+#         #                 # {'if': {'column_id': 'Symbol'},
+#         #                 #  'width': '50px'},
+#         #                 # {'if': {'column_id': 'Member'},
+#         #                 #  'width': '90px'},
+#         #                 # {'if': {'column_id': 'Date'},
+#         #                 #  'width': '80px'},
+#         #                 # {'if': {'column_id': 'Section/Topic'},
+#         #                 #  'width': '200px'},
+#         #                 {'if': {'column_id': 'Text (Paragraph)'},
+#         #                  'width': '1000px'},
+#         #                 # {'if': {'column_id': 'Score'},
+#         #                 #  'width': '80px', 'textAlign': 'right'},
+#         #             ],
+#         #             style_data_conditional=[
+#         #                 {
+#         #                     'if': {'row_index': 'odd'},
+#         #                     'backgroundColor': 'rgb(250, 250, 250)',
+#         #                 }
+#         #             ],
+#         #             style_as_list_view=True,
+#         #         )]
+            # )
+    
+
 #################################################
 # end of function page
 #################################################
