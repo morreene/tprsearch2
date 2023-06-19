@@ -6,6 +6,7 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 # to delete dash_table
 from dash import html, dcc, dash_table
+import urllib.parse
 
 import pandas as pd
 import openai
@@ -584,6 +585,11 @@ def search(n_clicks, search_terms, top):
     else:
         
         df = search_docs(search_terms, top = top)
+        
+        csv_string = df.to_csv(index=False, encoding='utf-8')
+        csv_string = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
+
+
         # score_range = zip(matches['score'].min(), matches['score'].max())
         df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
         matches = df[['meta', 'text']]
@@ -605,6 +611,7 @@ def search(n_clicks, search_terms, top):
     return html.Div(style={'width': '100%'},
                      children=[
                         html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
+                        html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
                         dash_table.DataTable(
                                 id="search-results-table",
                                 columns=[{"name": col, "id": col} for col in matches.columns],
@@ -663,6 +670,14 @@ def search(n_clicks, search_terms, top):
                             )
                         ]
             ), {'display': 'none'}, {'display': 'none'}
+
+# @app.server.route('/download_file')
+# def download_csv():
+#     return flask.send_from_directory(
+#         directory=os.getcwd(),
+#         filename='rawdata.csv'
+#     )
+
 
 #################################################
 #####     Chat page
