@@ -1,7 +1,7 @@
 from flask import Flask, session
 from flask_session import Session
 from dash import Dash, dcc, html
-import dash
+# import dash
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 # to delete dash_table
@@ -79,7 +79,6 @@ def complete(prompt, engine = 'text-davinci-003'):
     
     # query text-davinci-003
     res = openai.Completion.create(
-        # engine='',
         engine=engine,        
         prompt=prompt,
         temperature=0,
@@ -265,21 +264,6 @@ app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Location(id='logout-url', refresh=False),  # Added logout URL component
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     # login facet
     dbc.Container(
         dbc.Row(
@@ -287,30 +271,28 @@ app.layout = html.Div([
                 dbc.Card(
                     dbc.CardBody(
                         [
-                            html.H4("Login TPR ReportDB", className="card-title"),
+                            html.H4("Sign in to TPR Reports DB", className="card-title"),
                             html.Br(),
                             dbc.Form(
                                 [
                                     dbc.Row([
                                             dbc.Col([
-                                                    dbc.Label("Username:", html_for="username"),
-                                                    dbc.Input(type="text", id="username", placeholder="Enter your username",  style={"width": 200, "margin-left": 20}),
-                                                ],className="mb-3",
+                                                    dbc.Input(type="text", id="username", placeholder="Username", style={"width": 300}),
+                                                ], className="mb-3",
                                             )
                                         ]
                                     ),
                                     dbc.Row([
                                             dbc.Col([
-                                                    dbc.Label("Password:", html_for="password"),
-                                                    dbc.Input(type="password",  id="password", placeholder="Enter your password",style={"width": 200, "margin-left": 20}),
+                                                    dbc.Input(type="password",  id="password", placeholder="Password",style={"width": 300}),
                                                 ], className="mb-3",
                                             )
                                         ]
                                     ),
-                                    dbc.Button(id='login-button', children='Login', n_clicks=0, color="primary", className="mb-3"),
-                                ]
+                                    dbc.Button(id='login-button', children='Sign in', n_clicks=0, color="primary", className="my-custom-button", style={"width": 300}),
+                                ], 
                             ),
-                        ]
+                        ], className="d-grid gap-2 col-8 mx-auto",
                     ),
                     className="text-center",
                     style={"width": "500px", "margin": "auto", "background-color": "#e4f5f2"},
@@ -323,11 +305,8 @@ app.layout = html.Div([
 ])
 
 @app.callback(
-    # Output('username', 'style'),
-    # Output('password', 'style'),
-    # Output('login-button', 'style'),
-    Output('login-facet', 'style'),
-    Output('page-layout', 'style'),
+    [Output('login-facet', 'style'),
+    Output('page-layout', 'style')],
     [Input('login-button', 'n_clicks')],
     [State('username', 'value'), State('password', 'value')]
 )
@@ -336,7 +315,6 @@ def update_output(n_clicks, username, password):
         if username in USERS and USERS[username] == password:
             session['authed'] = True
     if session.get('authed', False):
-        # return {'display': 'none'}, {'display': 'none'}, {'display': 'none'}, {'display': 'block'}
         return  {'display': 'none'}, {'display': 'block'}
     else:
         # return {}, {}, {}, {'display': 'none'}
@@ -349,20 +327,19 @@ def render_page_content(pathname, logout_pathname):
     if logout_pathname == "/logout":  # Handle logout
         session.pop('authed', None)
         return dcc.Location(pathname="/login", id="redirect-to-login"), "/logout"
-    if pathname == "/":
+    elif pathname == "/":
         # return html.P("This is the content of the home page!"), pathname
-        return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"    
+        # return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"  
+        return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"      
     elif pathname == "/login":
-        # return html.P("This is the content of page after login"), '/page-1'
+        # return html.P("This is the content of page after login"), pathname
         return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"
     elif pathname == "/page-1":
         return dbc.Container([
-            html.H4("Search WTO TPR Report data with OpenAi embeddings", className="display-about"),
-            dbc.Row([
-                        html.Br(),
-                        html.Br(),
-                    ], justify="center", id='top-space'
-            ),
+
+            html.H4("Search WTO TPR Report data with OpenAI embeddings", className="display-about"),
+            html.Br(),
+            html.Br(),            
             dbc.Row([
                 dbc.Col(
                         dbc.InputGroup([
@@ -377,34 +354,10 @@ def render_page_content(pathname, logout_pathname):
                 # className="header", 
                 id='search-container'
             ),
-
-            # dbc.Row([
-            #     dbc.Col([
-            #                 html.Label("Return results with similarity score between:", className="text-end")
-            #             ], width=2, style={'text-align':'right', 'margin-top':'15px'},   # className="align-self-right"
-            #         ),
-            #     dbc.Col([
-            #         dcc.RangeSlider(
-            #             id='my-range-slider',
-            #             min=0.5,
-            #             max=1,
-            #             step=0.1,
-            #             value=[0.8, 1],
-            #             marks={
-            #                 0.5: '0.5',
-            #                 0.6: '0.6',
-            #                 0.7: '0.7',
-            #                 0.8: '0.8',
-            #                 0.9: '0.9',
-            #                 1: '1'
-            #             }, # className="mx-0 px-0"  # Remove margin/padding
-            #         )
-            #     ], width=6,style={'margin-top':'20px'},)
-            # ],justify="center", ),
-
+            html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(html.Label("Display paragraphs with the highest score:"), width="auto"),
+                    dbc.Col(html.Label("Display paragraphs with the highest score:"), width="auto",  style={'margin-top':5,'margin-left':10}),
                     dbc.Col(
                         dbc.RadioItems(
                             id="radio-select-top",
@@ -422,8 +375,6 @@ def render_page_content(pathname, logout_pathname):
                 align="center",
                 style={"margin-bottom": "10px"},
             ),
-
-
             html.Br(),
             html.Br(),
             dbc.Row([
@@ -445,7 +396,9 @@ def render_page_content(pathname, logout_pathname):
                         '''
                         ),
                 ], width=12),
-            ], justify="center", className="header", id='sample-queries'),
+            ], justify="center", 
+            # className="header", 
+            id='sample-queries'),
 
             html.Br(),
             html.Br(),
@@ -467,10 +420,8 @@ def render_page_content(pathname, logout_pathname):
     elif pathname == "/page-2":
         return dbc.Container([
             html.H4("Q&A with ChatGTP (OpenAI) with and without WTO TPR data", className="display-about"),
-            dbc.Row([
-                html.Br(),
-                html.Br(),
-            ], justify="center", id='top-space2'),
+            html.Br(),
+            html.Br(),
             dbc.Row([
                 dbc.Col(
                         dbc.InputGroup([
@@ -478,16 +429,17 @@ def render_page_content(pathname, logout_pathname):
                                 dbc.Button(" Query ChatGPT and TPR data ", id="search-button2", n_clicks=0,
                                                 #    className="btn btn-primary mt-3", 
                                             ),
+
+
                             ]
                         ), width=12,
                     ),
                 ], justify="center", className="header", id='search-container2'
             ),
-
-
+            html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(html.Label("Select OpenAI model:"), width="auto"),
+                    dbc.Col(html.Label("Select OpenAI model:"), width="auto", style={'margin-top':5,'margin-left':10}),
                     dbc.Col(
                         dbc.RadioItems(
                             id="radio-select-top2",
@@ -506,7 +458,6 @@ def render_page_content(pathname, logout_pathname):
                 align="center",
                 style={"margin-bottom": "10px"},
             ),
-
             html.Br(),
             html.Br(),
             dbc.Row([
@@ -523,14 +474,13 @@ def render_page_content(pathname, logout_pathname):
                             - Which countries have the most export restrictions?
                             - Which WTO members provide the export subsidies, in the last three years?
                             - Which members impose export tariffs or duties?
+                            - How the United States trade policy changed in the past 5 years?
                         '''
                         ),
                 ], width=12),
             ], justify="center", className="header", id='sample-queries2'),
-
             html.Br(),
             html.Br(),
-
             dbc.Row([ 
                 # html.Div(id="search-results", className="results"),
                 dbc.Col([
@@ -571,7 +521,7 @@ def render_page_content(pathname, logout_pathname):
 # call back for returning results
 @app.callback(
         [Output("search-results", "children"),  
-         Output("top-space", "style"),
+        #  Output("top-space", "style"),
          Output("sample-queries", "style")
          ],
         [Input("search-button", "n_clicks")], 
@@ -581,7 +531,7 @@ def render_page_content(pathname, logout_pathname):
 def search(n_clicks, search_terms, top):
     # Check if the search button was clicked
     if n_clicks <=0 or search_terms=='' or search_terms is None:
-        return "", {'display': 'block'}, None
+        return "",  None
     else:
         
         df = search_docs(search_terms, top = top)
@@ -589,29 +539,16 @@ def search(n_clicks, search_terms, top):
         csv_string = df.to_csv(index=False, encoding='utf-8')
         csv_string = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
 
-
-        # score_range = zip(matches['score'].min(), matches['score'].max())
         df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
         matches = df[['meta', 'text']]
         matches.columns = ['Meta','Text (Paragraph)']
-
-
-    # Search the dataframe for matching rows
-    # if search_terms:
-    #     matches = search_docs(search_terms, threshold = threshold[0])
-
-    #     # matches['similarities'] = matches['similarities'].round(3)
-    #     # matches['text'] = matches['ParaID'] + ' ' + matches['text']
-    #     matches = matches[['symbol','member','date','topic', 'text','score']]
-    #     matches.columns = ['Symbol','Member','Date','Section/Topic','Text (Paragraph)','Score']
-    # else:
-    #     matches = None
 
     # Display the results in a datatable
     return html.Div(style={'width': '100%'},
                      children=[
                         html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
                         html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
+                        html.Br(),
                         dash_table.DataTable(
                                 id="search-results-table",
                                 columns=[{"name": col, "id": col} for col in matches.columns],
@@ -669,15 +606,7 @@ def search(n_clicks, search_terms, top):
                                 style_as_list_view=True,
                             )
                         ]
-            ), {'display': 'none'}, {'display': 'none'}
-
-# @app.server.route('/download_file')
-# def download_csv():
-#     return flask.send_from_directory(
-#         directory=os.getcwd(),
-#         filename='rawdata.csv'
-#     )
-
+            ),  {'display': 'none'}
 
 #################################################
 #####     Chat page
@@ -686,7 +615,7 @@ def search(n_clicks, search_terms, top):
 # call back for returning results
 @app.callback(
         [Output("search-results2", "children"),  
-         Output("top-space2", "style"),
+        #  Output("top-space2", "style"),
          Output("sample-queries2", "style")
          ],
         [Input("search-button2", "n_clicks")], 
@@ -697,7 +626,7 @@ def search(n_clicks, search_terms, top):
 def chat(n_clicks, search_terms, model):
     # Check if the search button was clicked
     if n_clicks <=0 or search_terms=='' or search_terms is None:
-        return "", {'display': 'block'}, None
+        return "",  None
     else:
         chatgpt = complete(search_terms, model)
         # print(chatgpt)
@@ -723,76 +652,8 @@ def chat(n_clicks, search_terms, model):
             ),
         ],
     )
-), {'display': 'none'}, {'display': 'none'}
-
-
-# html.Div(
-#         children=[
-#         html.H4('chatgpt'),
-#         html.P(chatgpt),
-#         html.H4('chatgpt + TPR'),
-#         html.P(chatgpttpr),]
-#         # style={'width': '100%'},
-#         #              children=[
-#         #                  html.P(len(matches)),
-#         #     dash_table.DataTable(
-#         #             id="search-results-table",
-#         #             columns=[{"name": col, "id": col} for col in matches.columns],
-#         #             data=matches.to_dict("records"),
-
-#         #             editable=False,
-#         #             # filter_action="native",
-
-#         #             sort_action="native",
-#         #             sort_mode="multi",
-                    
-#         #             column_selectable=False,
-#         #             row_selectable=False,
-#         #             row_deletable=False,
-                    
-#         #             selected_columns=[],
-#         #             selected_rows=[],
-                    
-#         #             page_action="native",
-#         #             page_current= 0,
-#         #             page_size= 20,
-#         #             style_table={'width': '900px'},
-#         #             style_header={'fontWeight': 'bold'},
-#         #             style_cell={
-#         #                 # 'height': 'auto',
-#         #                 # 'minWidth': '50px', 
-#         #                 # 'maxWidth': '800px',
-#         #                 # # 'width': '100px',
-#         #                 # 'whiteSpace': 'normal',
-#         #                 'textAlign': 'left',
-#         #                 'fontSize': '14px',
-#         #                 'verticalAlign': 'top',
-#         #                 'whiteSpace': 'pre-line'
-#         #             },
-#         #             style_cell_conditional=[
-#         #                 # {'if': {'column_id': 'Symbol'},
-#         #                 #  'width': '50px'},
-#         #                 # {'if': {'column_id': 'Member'},
-#         #                 #  'width': '90px'},
-#         #                 # {'if': {'column_id': 'Date'},
-#         #                 #  'width': '80px'},
-#         #                 # {'if': {'column_id': 'Section/Topic'},
-#         #                 #  'width': '200px'},
-#         #                 {'if': {'column_id': 'Text (Paragraph)'},
-#         #                  'width': '1000px'},
-#         #                 # {'if': {'column_id': 'Score'},
-#         #                 #  'width': '80px', 'textAlign': 'right'},
-#         #             ],
-#         #             style_data_conditional=[
-#         #                 {
-#         #                     'if': {'row_index': 'odd'},
-#         #                     'backgroundColor': 'rgb(250, 250, 250)',
-#         #                 }
-#         #             ],
-#         #             style_as_list_view=True,
-#         #         )]
-            # )
-    
+),  {'display': 'none'}
+ 
 
 #################################################
 # end of function page
@@ -856,9 +717,6 @@ def toggle_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
-
-
-
 
 
 
