@@ -377,7 +377,6 @@ def render_page_content(pathname, logout_pathname):
     # elif pathname == "/page-1":
     elif pathname in ["/","/login", "/page-1"]:
         return dbc.Container([
-
             html.H6("Search reports with OpenAI embeddings", className="display-about"),
             html.Br(),
             html.Br(),            
