@@ -141,6 +141,42 @@ def retrieve(query):
 
 
 
+#################################################
+#####      Load data 
+#################################################
+
+with open('data/about.md', 'r') as markdown_file:
+    markdown_about = markdown_file.read()
+
+matrix = pd.read_pickle("data/tpr_matrix.pickle")
+# matrix.columns = matrix.columns.droplevel()
+matrix.index.name = None
+
+# print([{"name": str(i), "id": str(i)} for i in matrix.columns])
+
+# member_list = pd.read_sql_query("SELECT * FROM all_mem", cnx)
+member_list = pd.read_pickle("data/all_mem.pickle")
+member_list = member_list['Member'].tolist()
+member_list = ['All Members'] + member_list
+
+cat_list = pd.read_pickle("data/all_cat.pickle")
+cat_list = cat_list['Topic'].tolist()
+cat_list = ['All topics (slow loading)'] + cat_list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ##### Dash App
 # Hardcoded users (for demo purposes)
@@ -229,9 +265,13 @@ sidebar = html.Div([
                         dbc.Nav([
                                 dbc.NavLink("Search", href="/page-1", id="page-1-link"),
                                 dbc.NavLink("Question & Answer", href="/page-2", id="page-2-link"),
-                                # dbc.NavLink("Reference Tables", href="/page-3", id="page-3-link"),
+                                # dbc.NavLink("Reports - SrReference Tables", href="/page-3", id="page-3-link"),
                                 # dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
                                 # dbc.NavLink("Help", href="/page-5", id="page-5-link"),
+                                # dbc.NavLink("Browse Sec Reports", href="/page-3", id="page-3-link"),
+                                # dbc.NavLink("Browse Gov Reports", href="/page-4", id="page-4-link"),
+                                dbc.NavLink("Inventory", href="/page-3", id="page-3-link"),
+                                dbc.NavLink("About", href="/page-4", id="page-4-link"),
                                 dbc.NavLink("Logout", href="/logout", active="exact"),  # Add a logout link
                             ], vertical=True, pills=False,
                         ), id="collapse",
@@ -249,14 +289,14 @@ content = html.Div(id="page-content")
 # this callback uses the current pathname to set the active state of the
 # corresponding nav link to true, allowing users to tell see page they are on
 @app.callback(
-    [Output(f"page-{i}-link", "active") for i in range(1, 3)],
+    [Output(f"page-{i}-link", "active") for i in range(1, 5)],
     [Input("url", "pathname")],
 )
 def toggle_active_links(pathname):
     if pathname == "/":
         # Treat page 1 as the homepage / index
         return True, False, False, False, False
-    return [pathname == f"/page-{i}" for i in range(1, 3)]
+    return [pathname == f"/page-{i}" for i in range(1, 5)]
 
 
 
@@ -327,17 +367,18 @@ def render_page_content(pathname, logout_pathname):
     if logout_pathname == "/logout":  # Handle logout
         session.pop('authed', None)
         return dcc.Location(pathname="/login", id="redirect-to-login"), "/logout"
-    elif pathname == "/":
-        # return html.P("This is the content of the home page!"), pathname
-        # return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"  
-        return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"      
-    elif pathname == "/login":
-        # return html.P("This is the content of page after login"), pathname
-        return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"
-    elif pathname == "/page-1":
+    # elif pathname == "/":
+    #     # return html.P("This is the content of the home page!"), pathname
+    #     # return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"  
+    #     return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"      
+    # elif pathname == "/login":
+    #     # return html.P("This is the content of page after login"), pathname
+    #     return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"
+    # elif pathname == "/page-1":
+    elif pathname in ["/","/login", "/page-1"]:
         return dbc.Container([
 
-            html.H4("Search WTO TPR Report data with OpenAI embeddings", className="display-about"),
+            html.H6("Search reports with OpenAI embeddings", className="display-about"),
             html.Br(),
             html.Br(),            
             dbc.Row([
@@ -419,7 +460,7 @@ def render_page_content(pathname, logout_pathname):
 
     elif pathname == "/page-2":
         return dbc.Container([
-            html.H4("Q&A with ChatGTP (OpenAI) with and without WTO TPR data", className="display-about"),
+            html.H6("Q&A with ChatGTP (OpenAI) and report data", className="display-about"),
             html.Br(),
             html.Br(),
             dbc.Row([
@@ -489,15 +530,59 @@ def render_page_content(pathname, logout_pathname):
             ], justify="center"),
         ]), pathname
 
+
+
+
+
+
+    elif pathname == "/page-3":
+        # return html.P("This is the content of page 2. Yay!")
+        return html.Div([
+                html.H4('List of members, years and reports: value = document symbol numbers'),
+                dash_table.DataTable(
+                    id='table',
+                    columns=[{"name": i, "id": i} for i in matrix.columns],
+                    data=matrix.to_dict('records'),
+                    style_cell_conditional=[
+                        {'if': {'column_id': 'Member'},
+                         'width': '100px'},
+                    ]
+                )
+            ]), pathname
+    elif pathname == "/page-4":
+        return html.Div([
+                    # dbc.Container(
+                    #     [
+                            html.H4("About TPR Report Dataset", className="display-about"),
+                            html.P(
+                                "Explore information of the reports in a convinient way...",
+                                className="lead",
+                            ),
+                            html.Hr(className="my-2"),
+                            dcc.Markdown(markdown_about, id='topic',
+                                         style={
+                                            "display": "inline-block",
+                                            "width": "100%",
+                                            "margin-left": "0px",
+                                            "align": "left",
+                                            # "verticalAlign": "top"
+                                        }),
+                    #     ]
+                    # )
+                ]), pathname
+
+
+
+
+
+
+
+
+
+
+
     else:
         return html.P("404: Not found"), pathname
-
-
-
-
-
-
-
 
 
 
@@ -540,6 +625,8 @@ def search(n_clicks, search_terms, top):
         csv_string = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
 
         df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
+        df['text'] = df['text'] + '\n\n [Topic]: ' + df['topic']
+
         matches = df[['meta', 'text']]
         matches.columns = ['Meta','Text (Paragraph)']
 
