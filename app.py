@@ -16,10 +16,11 @@ import pinecone
 ##### openai
 API_KEY = "3842bbdef12e406dbaf407d7a133ee7e"
 RESOURCE_ENDPOINT = "https://openai-mais.openai.azure.com/"
+
 openai.api_type = "azure"
 openai.api_key = API_KEY
 openai.api_base = RESOURCE_ENDPOINT
-openai.api_version = "2022-12-01"
+openai.api_version = "2023-03-15-preview"
 
 ###### pinecone
 index_name = 'semantic-search-openai'
@@ -70,33 +71,86 @@ def search_docs(user_query, top=200):
 
 
 ##### functions for retrieval augmented generative question answering
-def complete(prompt, engine = 'text-davinci-003'):
-    prompt = 'Please answer the question with no more than 200 words: ' + prompt
-    # engine = 'text-ada-001'
-    # engine = 'text-curie-001'
-    # engine = 'text-davinci-003'
-    # engine = 'gpt-35-turbo'
+
+
+##### for davinci 3
+# def complete(prompt, engine = 'text-davinci-003'):
+#     prompt = 'Please answer the question with no more than 200 words: ' + prompt
+#     # engine = 'text-ada-001'
+#     # engine = 'text-curie-001'
+#     # engine = 'text-davinci-003'
+#     # engine = 'gpt-35-turbo'
     
-    # query text-davinci-003
-    res = openai.Completion.create(
-        engine=engine,        
-        prompt=prompt,
-        temperature=0,
+#     # query text-davinci-003
+#     res = openai.Completion.create(
+#         engine=engine,        
+#         prompt=prompt,
+#         temperature=0,
+#         max_tokens=400,
+#         top_p=1,
+#         frequency_penalty=0,
+#         presence_penalty=0,
+#         stop=None
+#     )
+#     # res = openai.Completion.create(engine=engine, prompt=prompt, max_tokens=200)
+#     return res['choices'][0]['text'].strip()
+
+# limit = 10000
+# def retrieve(query):
+#     res = openai.Embedding.create(
+#         input=[query],
+#         engine='text-embedding-ada-002'
+#     )
+
+#     # retrieve from Pinecone
+#     xq = res['data'][0]['embedding']
+
+#     # get relevant contexts
+#     res = index.query(xq, top_k=10, include_metadata=True)
+#     contexts = [
+#         x['metadata']['text'] for x in res['matches']
+#     ]
+
+#     # build our prompt with the retrieved contexts included
+#     prompt_start = (
+#         "Answer the question based on the context below. \n\n"+
+#         "Context:\n"
+#     )
+#     prompt_end = (
+#         f"\n\nQuestion: {query}\nAnswer:"
+#     )
+#     # append contexts until hitting limit
+#     for i in range(1, len(contexts)):
+#         if len("\n\n---\n\n".join(contexts[:i])) >= limit:
+#             prompt = (
+#                 prompt_start +
+#                 "\n\n---\n\n".join(contexts[:i-1]) +
+#                 prompt_end
+#             )
+#             break
+#         elif i == len(contexts)-1:
+#             prompt = (
+#                 prompt_start +
+#                 "\n\n---\n\n".join(contexts) +
+#                 prompt_end
+#             )
+#     return prompt
+
+
+def get_completion(prompt, model="gpt-35-turbo"):
+    messages = [{ "role": "system", "content":  "You are a Q&A assistant." },
+                {"role": "user", "content": prompt}]
+    response = openai.ChatCompletion.create(
+        engine=model,
+        messages=messages,
+        temperature=0.8, # this is the degree of randomness of the model's output
         max_tokens=400,
-        top_p=1,
+        top_p=0.95,
         frequency_penalty=0,
         presence_penalty=0,
         stop=None
     )
-    # res = openai.Completion.create(engine=engine, prompt=prompt, max_tokens=200)
-    return res['choices'][0]['text'].strip()
-
-
-
-
-
-
-
+    return response.choices[0].message["content"]
 
 limit = 10000
 def retrieve(query):
@@ -109,18 +163,19 @@ def retrieve(query):
     xq = res['data'][0]['embedding']
 
     # get relevant contexts
-    res = index.query(xq, top_k=10, include_metadata=True)
+    res = index.query(xq, top_k=50, include_metadata=True)
     contexts = [
-        x['metadata']['text'] for x in res['matches']
+        x['metadata']['symbol'] + 'paragraph' + x['metadata']['text'][0:400] for x in res['matches']
     ]
 
     # build our prompt with the retrieved contexts included
     prompt_start = (
-        "Answer the question based on the context below. \n\n"+
+        "Answer the following question based on the context below, which are the text of WTO Trade Policy Review reports. Add the information source by referring document symbol and paragraph numbers of the reports.\n\n"+
+        "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n"+
         "Context:\n"
     )
     prompt_end = (
-        f"\n\nQuestion: {query}\nAnswer:"
+        f"\n\nQuestion: {query}\n\nAnswer:"
     )
     # append contexts until hitting limit
     for i in range(1, len(contexts)):
@@ -138,6 +193,13 @@ def retrieve(query):
                 prompt_end
             )
     return prompt
+
+
+
+
+
+
+
 
 
 
@@ -276,7 +338,7 @@ sidebar = html.Div([
                             ], vertical=True, pills=False,
                         ), id="collapse",
                     ),
-                    html.Div([html.P("V0.5 (20230619)",
+                    html.Div([html.P("V0.7 (20230620)",
                                 # className="lead",
                             ),],id="blurb-bottom",
                     ),
@@ -405,6 +467,7 @@ def render_page_content(pathname, logout_pathname):
                                 {"label": "Top 100", "value": 100},
                                 {"label": "Top 200", "value": 200},
                                 {"label": "Top 500", "value": 500},
+                                {"label": "Top 1000", "value": 1000},
                             ],
                             value=200,
                             inline=True,
@@ -459,13 +522,13 @@ def render_page_content(pathname, logout_pathname):
 
     elif pathname == "/page-2":
         return dbc.Container([
-            html.H6("Q&A with ChatGTP (OpenAI) and report data", className="display-about"),
+            html.H6("Q&A with ChatGPT and TPR reports", className="display-about"),
             html.Br(),
             html.Br(),
             dbc.Row([
                 dbc.Col(
                         dbc.InputGroup([
-                                dbc.Input(id="search-box2", type="text", placeholder="Enter search query, e.g. subsidies and government support to fossil feul and energy", ),
+                                dbc.Input(id="search-box2", type="text", placeholder="Example: How governments regulate wildlife trade?", ),
                                 dbc.Button(" Query ChatGPT and TPR data ", id="search-button2", n_clicks=0,
                                                 #    className="btn btn-primary mt-3", 
                                             ),
@@ -484,12 +547,12 @@ def render_page_content(pathname, logout_pathname):
                         dbc.RadioItems(
                             id="radio-select-top2",
                             options=[
-                                {"label": "text-ada", "value": 'text-ada-001'},
-                                {"label": 'text-curie', "value": 'text-curie-001'},
-                                {"label": 'text-davinci', "value": 'text-davinci-003'},
-                                {"label": 'gpt-35', "value": 'gpt-35-turbo'},
+                                # {"label": "text-ada", "value": 'text-ada-001'},
+                                # {"label": 'text-curie-001', "value": 'text-curie-001'},
+                                # {"label": 'text-davinci-003', "value": 'text-davinci-003'},
+                                {"label": 'ChatGPT (gpt-3.5-turbo)', "value": 'gpt-35-turbo'},
                             ],
-                            value='text-davinci-003',
+                            value='gpt-35-turbo',
                             inline=True,
                         ),
                         width=True,
@@ -504,17 +567,23 @@ def render_page_content(pathname, logout_pathname):
                 dbc.Col([
                     dcc.Markdown(
                         '''
-                            - How WTO members protect biodiversity through their trade policy?
-                            - How tariff rate quota (TRQ) is administered by WTO members?
-                            - How WTO members subsidize energy and fossil fuel sector?
-                            - How WTO members promote environmental services?
-                            - How governments regulate wildlife trade?
-                            - How WTO members support the circular economy?
-                            - What trade restrictions are used most by WTO Members?
-                            - Which countries have the most export restrictions?
-                            - Which WTO members provide the export subsidies, in the last three years?
-                            - Which members impose export tariffs or duties?
-                            - How the United States trade policy changed in the past 5 years?
+                        This is a Q&A tool that integrates ChatGPT with TPR reports. A known issue while employing ChatGPT for factual question-answering 
+                        is its occasional propensity to fabricate or hallucinate information. While the Large Language Models (LLMs) encompass a wide 
+                        spectrum of general knowledge, this breadth doesn't necessarily translate to accurate specificity. To address this, we utilize 
+                        TPR reports as an 'external knowledge base', allowing us to provide more accurate and precise responses.
+
+                        - How WTO members protect biodiversity through their trade policy?
+                        - How Tariff Rate Quota (TRQ) is administered by WTO members?
+                        - How WTO members subsidize energy and fossil fuel sector?
+                        - How WTO members promote environmental services?
+                        - How governments regulate wildlife trade?
+                        - How WTO members support the circular economy?
+                        - What trade restrictions are used most by WTO Members? (*)
+                        - Which countries have the most export restrictions? (*)
+                        - Which WTO members provide the export subsidies and on what products? (***)
+                        - Which members impose export tariffs or export duties?
+                        - How the United States trade policy changed in the past 5 years? (**)
+                        - How anti-dumping measure is used by the WTO members?
                         '''
                         ),
                 ], width=12),
@@ -553,10 +622,7 @@ def render_page_content(pathname, logout_pathname):
                     # dbc.Container(
                     #     [
                             html.H4("About TPR Report Dataset", className="display-about"),
-                            html.P(
-                                "Explore information of the reports in a convinient way...",
-                                className="lead",
-                            ),
+                            # html.P("Explore information of the reports in a convinient way...", className="lead"),
                             html.Hr(className="my-2"),
                             dcc.Markdown(markdown_about, id='topic',
                                          style={
@@ -635,6 +701,7 @@ def search(n_clicks, search_terms, top):
                         html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
                         html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
                         html.Br(),
+                        html.Br(),
                         dash_table.DataTable(
                                 id="search-results-table",
                                 columns=[{"name": col, "id": col} for col in matches.columns],
@@ -709,22 +776,35 @@ def search(n_clicks, search_terms, top):
         State('radio-select-top2', 'value')
         ]
         )
-def chat(n_clicks, search_terms, model):
+def chat(n_clicks, query, model):
     # Check if the search button was clicked
-    if n_clicks <=0 or search_terms=='' or search_terms is None:
+    if n_clicks <=0 or query=='' or query is None:
         return "",  None
     else:
-        chatgpt = complete(search_terms, model)
-        # print(chatgpt)
-        query_with_contexts = retrieve(search_terms)
-        chatgpttpr = complete(query_with_contexts, model)
+        # ChatGPT only
+        prompt = f"""
+                    Answer the following question.
+                    If you don't know the answer, just say that you don't know. 
+                    ---
+                    QUESTION: {query}   
+                """
+        chatgpt = get_completion(prompt)        
+
+        # chatgpt = complete(search_terms, model)
+        # # print(chatgpt)
+
+        # ChatGPT plus TPR
+        prompt = retrieve(query)
+        chatgpttpr = get_completion(prompt)
+        # query_with_contexts = retrieve(search_terms)
+        # chatgpttpr = complete(query_with_contexts, model)
     return html.Div(
     dbc.Container(
         [
             dbc.Row(
                 [
-                    dbc.Col(html.H4("Answer by OpenAI"), width={"size": 6, "offset": 0}),
-                    dbc.Col(html.H4("Answer by OpenAI + TPR"), width={"size": 6, "offset": 0}),
+                    dbc.Col(html.H5("Answer by ChatGPT"), width={"size": 6, "offset": 0}),
+                    dbc.Col(html.H5("Answer by ChatGPT based on TPR reports"), width={"size": 6, "offset": 0}),
                 ],
                 justify="between",
                 style={"margin-bottom": "20px"},

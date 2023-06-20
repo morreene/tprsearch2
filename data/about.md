@@ -1,15 +1,15 @@
 
 
-This web app provides access to the WTO [Trade Policy Review (TPR)](https://www.wto.org/english/tratop_e/tpr_e/tpr_e.htm) reports (Secretariat & Government).
+This app provides a search function for the WTO [Trade Policy Review (TPR)](https://www.wto.org/english/tratop_e/tpr_e/tpr_e.htm) Secretariat reports.
 
-* Each record in the database represents a paragraph of TPR reports.
-* Report texts can be retrieved by report section and/or by member, or searched by keywords.
-* The app is for testing purposes only. Please download the official reports from [the WTO website](https://www.wto.org/english/tratop_e/tpr_e/tpr_e.htm).
-* The list of sections and subsections of the Secretariat reports are listed below:
+Each record in the dataset represents a paragraph from the TPR reports. Paragraphs are identified by the member, document symbol, and topic (section-subsection).
+
+Please note that this app is intended for testing purposes only.
+
+The topics listed below roughly correspond to the sections and subsections found in the Secretariat reports:
 
 
-
-| Section                          | Sub-section 1                        | Sub-section 2                            |
+| Topic - level 1                  | Topic - level 3                      | Topic - level 3                          |
 | -------------------------------- | ------------------------------------ | ---------------------------------------- |
 | 0\. summary                      |                                      |                                          |
 | 1\. economic environment         |                                      |                                          |
