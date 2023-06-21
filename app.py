@@ -612,8 +612,9 @@ def render_page_content(pathname, logout_pathname):
     elif pathname == "/page-3":
         # return html.P("This is the content of page 2. Yay!")
         return html.Div([
-                html.H4('TPR Reports by Member and Year'),
-                html.P('(Each value is a numerical identifier that represents a specific TPR in the document symbol.)'),
+                # html.H4('TPR Reports by Member and Year'),
+                html.H6("TPR Reports by Member and Year", className="display-about"),
+                html.P('Each value is a numerical identifier that represents a specific TPR in the document symbol'),
                 dash_table.DataTable(
                     id='table',
                     columns=[{"name": i, "id": i} for i in matrix.columns],
@@ -630,7 +631,8 @@ def render_page_content(pathname, logout_pathname):
                     #     [
                             html.H4("About the tools and the TPR report dataset", className="display-about"),
                             # html.P("Explore information of the reports in a convinient way...", className="lead"),
-                            html.Hr(className="my-2"),
+                            # html.Hr(className="my-2"),
+                            html.Br(),
                             dcc.Markdown(markdown_about, id='topic',
                                          style={
                                             "display": "inline-block",
