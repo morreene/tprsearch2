@@ -165,14 +165,20 @@ def retrieve(query):
     # get relevant contexts
     res = index.query(xq, top_k=50, include_metadata=True)
     contexts = [
-        x['metadata']['symbol'] + 'paragraph' + x['metadata']['text'][0:400] for x in res['matches']
+        '('+ x['metadata']['member'] + ') (' + x['metadata']['symbol'] + ') paragraph ' + x['metadata']['text'][0:400] for x in res['matches']
     ]
 
     # build our prompt with the retrieved contexts included
     prompt_start = (
-        "Answer the following question based on the context below, which are the text of WTO Trade Policy Review reports. Add the information source by referring document symbol and paragraph numbers of the reports.\n\n"+
+        # "Answer the following question based on the context below, which are the text of WTO Trade Policy Review reports. Add the information source by referring document symbol and paragraph numbers of the reports.\n\n"+
+        # "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n"+
+        # "Context:\n"
+        "Answer the following question based on the context provided below, which are the relevant paragraphs from the WTO member's TPR reports. Paragraph start with a country name, a document symbol and a paragraph number. \n\n"+
+        "In the answers, be sure to add document symbols and paragraph numbers as references for finding in the answer. \n\n"+
         "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n"+
         "Context:\n"
+
+
     )
     prompt_end = (
         f"\n\nQuestion: {query}\n\nAnswer:"
@@ -485,7 +491,9 @@ def render_page_content(pathname, logout_pathname):
                     dcc.Markdown(
                         '''
                         Be clear and specific when crafting your query. There's no need to worry about whether the words or phrases will exactly match the text you want to find. 
-                        You can use English, French, Spanish, Arabic, German and other languages. Search query examples:
+                        You can use English, French, Spanish, Arabic, German and other languages. [More information ...](/page-4)
+
+                        Search query examples:
                         * subsidies and government supports on fossil fuel and energy
                         * find policies related to MSME, SME or small businesses in Africa
                         * any competition policy related to high-tech sector
@@ -494,8 +502,6 @@ def render_page_content(pathname, logout_pathname):
                         * الإعانات والدعم الحكومي للوقود الأحفوري والطاقة
                         * interdictions d'importer ou d'exporter
                         * Πολιτικές που ευνοούν τις μικρές επιχειρήσεις
-
-                        The search is based on 204 Trade Policy Review Secretariat reports issued since 2015, including a total 100,390 paragraphs.
                         '''
                         ),
                 ], width=12),
@@ -567,23 +573,23 @@ def render_page_content(pathname, logout_pathname):
                 dbc.Col([
                     dcc.Markdown(
                         '''
-                        This is a Q&A tool that integrates ChatGPT with TPR reports. A known issue while employing ChatGPT for factual question-answering 
-                        is its occasional propensity to fabricate or hallucinate information. While the Large Language Models (LLMs) encompass a wide 
-                        spectrum of general knowledge, this breadth doesn't necessarily translate to accurate specificity. To address this, we utilize 
-                        TPR reports as an 'external knowledge base', allowing us to provide more accurate and precise responses.
+                        This Q&A tool is designed to answer questions related to international trade. It provides responses derived from two sources: ChatGPT and TPR data. The tool offers 
+                        both the answers generated solely by ChatGPT and the responses that source information from TPR reports. [More information ...](/page-4)
+
+                        Below are some sample questions
 
                         - How WTO members protect biodiversity through their trade policy?
                         - How Tariff Rate Quota (TRQ) is administered by WTO members?
                         - How WTO members subsidize energy and fossil fuel sector?
                         - How WTO members promote environmental services?
                         - How governments regulate wildlife trade?
-                        - How WTO members support the circular economy?
-                        - What trade restrictions are used most by WTO Members? (*)
-                        - Which countries have the most export restrictions? (*)
+                        - Are there policies by WTO members support the circular economy?
+                        - What kinds of trade restrictions have been used by WTO Members? (*)
+                        - What kinds of export restrictions are imposed by the WTO members? (*)
                         - Which WTO members provide the export subsidies and on what products? (***)
-                        - Which members impose export tariffs or export duties?
+                        - Tell me the members impose export tariffs, taxes or duties. (*)
                         - How the United States trade policy changed in the past 5 years? (**)
-                        - How anti-dumping measure is used by the WTO members?
+                        - How anti-dumping measures are used by WTO members?
                         '''
                         ),
                 ], width=12),
@@ -606,7 +612,8 @@ def render_page_content(pathname, logout_pathname):
     elif pathname == "/page-3":
         # return html.P("This is the content of page 2. Yay!")
         return html.Div([
-                html.H4('List of members, years and reports: value = document symbol numbers'),
+                html.H4('TPR Reports by Member and Year'),
+                html.P('(Each value is a numerical identifier that represents a specific TPR in the document symbol.)'),
                 dash_table.DataTable(
                     id='table',
                     columns=[{"name": i, "id": i} for i in matrix.columns],
@@ -621,7 +628,7 @@ def render_page_content(pathname, logout_pathname):
         return html.Div([
                     # dbc.Container(
                     #     [
-                            html.H4("About TPR Report Dataset", className="display-about"),
+                            html.H4("About the tools and the TPR report dataset", className="display-about"),
                             # html.P("Explore information of the reports in a convinient way...", className="lead"),
                             html.Hr(className="my-2"),
                             dcc.Markdown(markdown_about, id='topic',

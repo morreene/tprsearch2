@@ -1,15 +1,55 @@
 
+**Please note that this app is intended for testing purposes only.**
 
-This app provides a search function for the WTO [Trade Policy Review (TPR)](https://www.wto.org/english/tratop_e/tpr_e/tpr_e.htm) Secretariat reports.
+### Semantic Search using Text Embeddings
+
+
+The document search engine incorporates a new search feature that utilizes text embeddings from OpenAI's large language model, 
+providing more accurate and relevant search results. Here's an explanation of what this means and how it differs from traditional search methods.
+
+##### What are text embeddings?
+
+Text embeddings can be thought of as a way to convert complex language into a simpler, mathematical representation that computers 
+can understand more easily. By representing words, phrases, and paragraphs as points in a high-dimensional space, text embeddings 
+enable our search engine to process and interpret the meaning of the text more effectively.
+
+##### How is this search different from traditional text matching search?
+
+Traditional search engines often rely on matching keywords or phrases from your search query to those found in documents. While this 
+method has its merits, it can sometimes miss the true meaning or context behind the words being used.
+
+This new search feature, powered by text embeddings from OpenAI's large language model, takes a more sophisticated approach. By converting 
+both your search query and the documents into embeddings, we can measure the similarity between them in the high-dimensional space. 
+This allows our search engine to better understand the meaning and context of the words, phrases, and sentences, providing more relevant 
+and accurate results that better align with your intentions.
+
+##### How should you construct your query?
+
+Be clear and specific when crafting your query. There's no need to worry about whether the words or phrases will exactly match the text 
+you want to find. The search engine will focus on understanding the meaning behind your query and deliver relevant results accordingly.
+
+You can use English, French, Spanish, Arabic, German and other languages.         
+
+### Question and Answer with ChatGPT and TPR reports
+
+This is a Q&A tool that combines the capabilities of ChatGPT and TPR reports to answer questions about WTO members' trade policy. The tool leverages 
+TPR reports as a source of information and utilizes ChatGPT as an assistant to gather information and generate answers in natural language. To assess 
+the quality of the answers, the tool presents both the responses obtained solely from ChatGPT and those that incorporate TPR data.
+
+One known challenge when using ChatGPT for factual question-answering is its occasional tendency to invent or imagine information. Although Large 
+anguage Models (LLMs) like ChatGPT possess a vast range of general knowledge, this breadth does not always guarantee precise accuracy. To mitigate 
+this issue, the tool incorporates TPR reports as an "external knowledge base," enabling us to provide more reliable and specific responses.
+
+### TPR dataset
+
+The dataset consists of 204 Trade Policy Review Secretariat reports issued since 2010, including a total 100,390 paragraphs.
 
 Each record in the dataset represents a paragraph from the TPR reports. Paragraphs are identified by the member, document symbol, and topic (section-subsection).
-
-Please note that this app is intended for testing purposes only.
 
 The topics listed below roughly correspond to the sections and subsections found in the Secretariat reports:
 
 
-| Topic - level 1                  | Topic - level 3                      | Topic - level 3                          |
+| Topic - level 1                  | Topic - level 2                      | Topic - level 3                          |
 | -------------------------------- | ------------------------------------ | ---------------------------------------- |
 | 0\. summary                      |                                      |                                          |
 | 1\. economic environment         |                                      |                                          |
