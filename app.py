@@ -1,7 +1,7 @@
 from flask import Flask, session
 from flask_session import Session
 from dash import Dash, dcc, html
-# import dash
+import dash
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 # to delete dash_table
@@ -217,6 +217,7 @@ with open('data/about.md', 'r') as markdown_file:
     markdown_about = markdown_file.read()
 
 matrix = pd.read_pickle("data/tpr_matrix.pickle")
+# print(matrix.head())
 # matrix.columns = matrix.columns.droplevel()
 matrix.index.name = None
 
@@ -233,8 +234,25 @@ cat_list = ['All topics (slow loading)'] + cat_list
 
 
 
-
-
+tags = {
+    'agriculture': 'agriculture',
+    'competition': 'competition',
+    'customs valuation': 'customs valuation',
+    'ecommerce': 'ecommerce',
+    'environment': 'environment',
+    'financial services': 'financial services banking insurance',
+    'government procurement': 'government procurement',
+    'intellectual property rights': 'intellectual property rights',
+    'msme': 'msme',
+    'quantitative restriction': 'prohibitions, restrictions and licensing',
+    'rules of origin': 'rules of origin',
+    'sps': 'sps',
+    'subsidies': 'industrial subsidies',
+    'tariff': 'tariff or tariff duties',
+    'taxation': 'tax vat excise',
+    'tbt': 'standards and technical regulations',
+    'trade remedy': 'trade remedies or anti-dumping or contervailing or safegurards'
+}
 
 
 
@@ -331,20 +349,20 @@ sidebar = html.Div([
                     # use the Collapse component to animate hiding / revealing links
                     dbc.Collapse(
                         dbc.Nav([
-                                dbc.NavLink("Search", href="/page-1", id="page-1-link"),
+                                dbc.NavLink("Search ", href="/page-1", id="page-1-link"),
                                 dbc.NavLink("Question & Answer", href="/page-2", id="page-2-link"),
                                 # dbc.NavLink("Reports - SrReference Tables", href="/page-3", id="page-3-link"),
                                 # dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
                                 # dbc.NavLink("Help", href="/page-5", id="page-5-link"),
                                 # dbc.NavLink("Browse Sec Reports", href="/page-3", id="page-3-link"),
-                                # dbc.NavLink("Browse Gov Reports", href="/page-4", id="page-4-link"),
-                                dbc.NavLink("Inventory", href="/page-3", id="page-3-link"),
-                                dbc.NavLink("About", href="/page-4", id="page-4-link"),
+                                dbc.NavLink("Browse Topics", href="/page-3", id="page-3-link"),
+                                dbc.NavLink("Report List", href="/page-4", id="page-4-link"),
+                                dbc.NavLink("About", href="/page-5", id="page-5-link"),
                                 dbc.NavLink("Logout", href="/logout", active="exact"),  # Add a logout link
                             ], vertical=True, pills=False,
                         ), id="collapse",
                     ),
-                    html.Div([html.P("V0.7 (20230620)",
+                    html.Div([html.P("V0.8 (20230626)",
                                 # className="lead",
                             ),],id="blurb-bottom",
                     ),
@@ -357,14 +375,14 @@ content = html.Div(id="page-content")
 # this callback uses the current pathname to set the active state of the
 # corresponding nav link to true, allowing users to tell see page they are on
 @app.callback(
-    [Output(f"page-{i}-link", "active") for i in range(1, 5)],
+    [Output(f"page-{i}-link", "active") for i in range(1, 6)],
     [Input("url", "pathname")],
 )
 def toggle_active_links(pathname):
     if pathname == "/":
         # Treat page 1 as the homepage / index
         return True, False, False, False, False
-    return [pathname == f"/page-{i}" for i in range(1, 5)]
+    return [pathname == f"/page-{i}" for i in range(1, 6)]
 
 
 
@@ -583,7 +601,7 @@ def render_page_content(pathname, logout_pathname):
                         - How WTO members subsidize energy and fossil fuel sector?
                         - How WTO members promote environmental services?
                         - How governments regulate wildlife trade?
-                        - Are there policies by WTO members support the circular economy?
+                        - Are there policies used by WTO members support the circular economy?
                         - What kinds of trade restrictions have been used by WTO Members? (*)
                         - What kinds of export restrictions are imposed by the WTO members? (*)
                         - Which WTO members provide the export subsidies and on what products? (***)
@@ -603,13 +621,94 @@ def render_page_content(pathname, logout_pathname):
                     ], width=12),
             ], justify="center"),
         ]), pathname
-
-
-
-
-
-
     elif pathname == "/page-3":
+        return dbc.Container([
+            html.H6("Browse reports by topics", className="display-about"),
+            html.Br(),
+            # dbc.Row([
+            #     dbc.Col(
+            #             dbc.InputGroup([
+            #                     dbc.Input(id="search-box2", type="text", placeholder="Example: How governments regulate wildlife trade?", ),
+            #                     dbc.Button(" Query ChatGPT and TPR data ", id="search-button2", n_clicks=0,
+            #                                     #    className="btn btn-primary mt-3", 
+            #                                 ),
+
+
+            #                 ]
+            #             ), width=12,
+            #         ),
+            #     ], justify="center", className="header", id='search-container2'
+            # ),
+            # html.Br(),
+            # dbc.Row(
+            #     [
+            #         dbc.Col(html.Label("Select OpenAI model:"), width="auto", style={'margin-top':5,'margin-left':10}),
+            #         dbc.Col(
+            #             dbc.RadioItems(
+            #                 id="radio-select-top2",
+            #                 options=[
+            #                     # {"label": "text-ada", "value": 'text-ada-001'},
+            #                     # {"label": 'text-curie-001', "value": 'text-curie-001'},
+            #                     # {"label": 'text-davinci-003', "value": 'text-davinci-003'},
+            #                     {"label": 'ChatGPT (gpt-3.5-turbo)', "value": 'gpt-35-turbo'},
+            #                 ],
+            #                 value='gpt-35-turbo',
+            #                 inline=True,
+            #             ),
+            #             width=True,
+            #         ),
+            #     ],
+            #     align="center",
+            #     style={"margin-bottom": "10px"},
+            # ),
+            # html.Br(),
+            # html.Br(),
+            # dbc.Row([
+            #     dbc.Col([
+            #         dcc.Markdown(
+            #             '''
+            #             This Q&A tool is designed to answer questions related to international trade. It provides responses derived from two sources: ChatGPT and TPR data. The tool offers 
+            #             both the answers generated solely by ChatGPT and the responses that source information from TPR reports. [More information ...](/page-4)
+
+            #             Below are some sample questions
+
+            #             - How WTO members protect biodiversity through their trade policy?
+            #             - How Tariff Rate Quota (TRQ) is administered by WTO members?
+            #             - How WTO members subsidize energy and fossil fuel sector?
+            #             - How WTO members promote environmental services?
+            #             - How governments regulate wildlife trade?
+            #             - Are there policies used by WTO members support the circular economy?
+            #             - What kinds of trade restrictions have been used by WTO Members? (*)
+            #             - What kinds of export restrictions are imposed by the WTO members? (*)
+            #             - Which WTO members provide the export subsidies and on what products? (***)
+            #             - Tell me the members impose export tariffs, taxes or duties. (*)
+            #             - How the United States trade policy changed in the past 5 years? (**)
+            #             - How anti-dumping measures are used by WTO members?
+            #             '''
+            #             ),
+            #     ], width=12),
+            # ], justify="center", className="header", id='sample-queries2'),
+            # html.Br(),
+            # html.Br(),
+            # html.Div(id='tag-container', children=[html.Button(tag['Tag'], id={'type': 'tag', 'index': i}) for i, tag in enumerate(tags)]),
+            # html.Div(id='tag-container', children=[html.Button(key, id={'type': 'tag', 'index': i}) for i, key in enumerate(tags)]),
+            html.Div(id='tag-container', children=[dbc.Button(key, id={'type': 'tag', 'index': i}, color="light", className="me-1", style={'margin-right':'10px', 'margin-bottom':'10px'}) for i, key in enumerate(tags)]),
+            html.Br(),
+            dbc.Row([ 
+                # html.Div(id="search-results", className="results"),
+                dbc.Col([
+                        dcc.Loading(id="loading3", type="default", children=html.Div(id="search-results3"), fullscreen=False),
+                    ], width=12),
+            ], justify="center"),
+
+        ]), pathname
+
+
+
+
+
+
+    elif pathname == "/page-4":
         # return html.P("This is the content of page 2. Yay!")
         return html.Div([
                 # html.H4('TPR Reports by Member and Year'),
@@ -625,7 +724,7 @@ def render_page_content(pathname, logout_pathname):
                     ]
                 )
             ]), pathname
-    elif pathname == "/page-4":
+    elif pathname == "/page-5":
         return html.Div([
                     # dbc.Container(
                     #     [
@@ -644,17 +743,6 @@ def render_page_content(pathname, logout_pathname):
                     #     ]
                     # )
                 ]), pathname
-
-
-
-
-
-
-
-
-
-
-
     else:
         return html.P("404: Not found"), pathname
 
@@ -829,6 +917,128 @@ def chat(n_clicks, query, model):
     )
 ),  {'display': 'none'}
  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.callback(
+    # Output('table', 'data'),
+    Output("search-results3", "children"),
+    [Input({'type': 'tag', 'index': dash.dependencies.ALL}, 'n_clicks')],
+    [State({'type': 'tag', 'index': dash.dependencies.ALL}, 'children')]
+)
+def update_table(*args):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        return None # df.to_dict('records')
+
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    tag_clicked = ctx.states[button_id + '.children']
+    # print(tag_clicked)
+
+    # filtered_df = search_docs(tags[tag_clicked], top = 100)
+
+    df = search_docs(tags[tag_clicked], top = 200)
+    
+    csv_string = df.to_csv(index=False, encoding='utf-8')
+    csv_string = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
+
+    df['meta'] = df['member'] + '\n' + df['symbol'] + '\n' + df['date'] + '\n Score: ' + df['score'].astype(str) 
+    df['text'] = df['text'] + '\n\n [Topic]: ' + df['topic']
+
+    matches = df[['meta', 'text']]
+    matches.columns = ['Meta','Text (Paragraph)']
+
+    # Display the results in a datatable
+    return html.Div(style={'width': '100%'},
+                     children=[
+                        html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
+                        html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
+                        html.Br(),
+                        html.Br(),
+                        dash_table.DataTable(
+                                id="search-results-table",
+                                columns=[{"name": col, "id": col} for col in matches.columns],
+                                data=matches.to_dict("records"),
+
+                                editable=False,
+                                # filter_action="native",
+
+                                sort_action="native",
+                                sort_mode="multi",
+                                
+                                column_selectable=False,
+                                row_selectable=False,
+                                row_deletable=False,
+                                
+                                selected_columns=[],
+                                selected_rows=[],
+                                
+                                page_action="native",
+                                page_current= 0,
+                                page_size= 20,
+
+                                style_table={'width': '100%'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={
+                                    # 'height': 'auto',
+                                    # 'minWidth': '50px', 
+                                    # 'maxWidth': '800px',
+                                    # # 'width': '100px',
+                                    # 'whiteSpace': 'normal',
+                                    'textAlign': 'left',
+                                    'fontSize': '14px',
+                                    'verticalAlign': 'top',
+                                    'whiteSpace': 'pre-line'
+                                    # 'whiteSpace': 'nowrap',
+                                    
+                                },
+                                # style_cell_conditional=[
+                                #     # {'if': {'column_id': 'Symbol'},
+                                #     #  'width': '50px'},
+                                #     # {'if': {'column_id': 'Member'},
+                                #     #  'width': '90px'},
+                                #     # {'if': {'column_id': 'Date'},
+                                #     #  'width': '80px'},
+                                #     # {'if': {'column_id': 'Section/Topic'},
+                                #     #  'width': '200px'},
+                                #     {'if': {'column_id': 'Text (Paragraph)'},
+                                #     'width': '1000px'},
+                                #     # {'if': {'column_id': 'Score'},
+                                #     #  'width': '80px', 'textAlign': 'right'},
+                                # ],
+                                style_data_conditional=[
+                                    {
+                                        'if': {'row_index': 'odd'},
+                                        'backgroundColor': 'rgb(250, 250, 250)',
+                                    }
+                                ],
+                                style_as_list_view=True,
+                            )
+                        ]
+            )
+
+
+
+
+
+
+
+
+
+
 
 #################################################
 # end of function page
