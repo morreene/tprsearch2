@@ -599,9 +599,9 @@ def render_page_content(pathname, logout_pathname):
             html.Div(id='tag-container', children=[dbc.Button(key, id={'type': 'tag', 'index': i}, color="light", className="me-1", style={'margin-right':'10px', 'margin-bottom':'10px'}) for i, key in enumerate(tags)]),
             html.Br(),
             dbc.Row([ 
-                # html.Div(id="search-results", className="results"),
                 dbc.Col([
-                        dcc.Loading(id="loading3", type="default", children=html.Div(id="search-results3"), fullscreen=False),
+                        # html.Div(id="search-results", className="results"),
+                        dcc.Loading(id="loading", type="default", children=html.Div(id="search-results3"), fullscreen=False),
                     ], width=12),
             ], justify="center"),
         ]), pathname
