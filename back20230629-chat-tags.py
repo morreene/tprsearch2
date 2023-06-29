@@ -13,11 +13,6 @@ import openai
 from openai.embeddings_utils import get_embedding #, cosine_similarity
 import pinecone
 
-
-#################################################
-#####     configurations
-#################################################
-
 ##### openai
 API_KEY = "3842bbdef12e406dbaf407d7a133ee7e"
 RESOURCE_ENDPOINT = "https://openai-mais.openai.azure.com/"
@@ -27,7 +22,7 @@ openai.api_key = API_KEY
 openai.api_base = RESOURCE_ENDPOINT
 openai.api_version = "2023-03-15-preview"
 
-##### pinecone
+###### pinecone
 index_name = 'semantic-search-openai'
 
 # initialize connection to pinecone (get API key at app.pinecone.io)
@@ -43,12 +38,7 @@ pinecone.init(
 # connect to index
 index = pinecone.Index(index_name)
 
-
-#################################################
-#####     Functions
-#################################################
-
-##### search document data with openai embedding
+##### function search document data with openai embedding
 def search_docs(user_query, top=200):
     xq = get_embedding(
         user_query,
@@ -80,7 +70,73 @@ def search_docs(user_query, top=200):
     return df
 
 
-##### ChatGPT augmented generative question answering
+##### functions for retrieval augmented generative question answering
+
+
+##### for davinci 3
+# def complete(prompt, engine = 'text-davinci-003'):
+#     prompt = 'Please answer the question with no more than 200 words: ' + prompt
+#     # engine = 'text-ada-001'
+#     # engine = 'text-curie-001'
+#     # engine = 'text-davinci-003'
+#     # engine = 'gpt-35-turbo'
+    
+#     # query text-davinci-003
+#     res = openai.Completion.create(
+#         engine=engine,        
+#         prompt=prompt,
+#         temperature=0,
+#         max_tokens=400,
+#         top_p=1,
+#         frequency_penalty=0,
+#         presence_penalty=0,
+#         stop=None
+#     )
+#     # res = openai.Completion.create(engine=engine, prompt=prompt, max_tokens=200)
+#     return res['choices'][0]['text'].strip()
+
+# limit = 10000
+# def retrieve(query):
+#     res = openai.Embedding.create(
+#         input=[query],
+#         engine='text-embedding-ada-002'
+#     )
+
+#     # retrieve from Pinecone
+#     xq = res['data'][0]['embedding']
+
+#     # get relevant contexts
+#     res = index.query(xq, top_k=10, include_metadata=True)
+#     contexts = [
+#         x['metadata']['text'] for x in res['matches']
+#     ]
+
+#     # build our prompt with the retrieved contexts included
+#     prompt_start = (
+#         "Answer the question based on the context below. \n\n"+
+#         "Context:\n"
+#     )
+#     prompt_end = (
+#         f"\n\nQuestion: {query}\nAnswer:"
+#     )
+#     # append contexts until hitting limit
+#     for i in range(1, len(contexts)):
+#         if len("\n\n---\n\n".join(contexts[:i])) >= limit:
+#             prompt = (
+#                 prompt_start +
+#                 "\n\n---\n\n".join(contexts[:i-1]) +
+#                 prompt_end
+#             )
+#             break
+#         elif i == len(contexts)-1:
+#             prompt = (
+#                 prompt_start +
+#                 "\n\n---\n\n".join(contexts) +
+#                 prompt_end
+#             )
+#     return prompt
+
+
 def get_completion(prompt, model="gpt-35-turbo"):
     messages = [{ "role": "system", "content":  "You are a Q&A assistant." },
                 {"role": "user", "content": prompt}]
@@ -96,7 +152,6 @@ def get_completion(prompt, model="gpt-35-turbo"):
     )
     return response.choices[0].message["content"]
 
-# prompt with context
 limit = 10000
 def retrieve(query):
     res = openai.Embedding.create(
@@ -122,6 +177,8 @@ def retrieve(query):
         "In the answers, be sure to add document symbols and paragraph numbers as references for finding in the answer. \n\n"+
         "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n"+
         "Context:\n"
+
+
     )
     prompt_end = (
         f"\n\nQuestion: {query}\n\nAnswer:"
@@ -144,16 +201,29 @@ def retrieve(query):
     return prompt
 
 
+
+
+
+
+
+
+
+
 #################################################
-#####     Load data 
+#####      Load data 
 #################################################
 
 with open('data/about.md', 'r') as markdown_file:
     markdown_about = markdown_file.read()
 
 matrix = pd.read_pickle("data/tpr_matrix.pickle")
+# print(matrix.head())
+# matrix.columns = matrix.columns.droplevel()
 matrix.index.name = None
 
+# print([{"name": str(i), "id": str(i)} for i in matrix.columns])
+
+# member_list = pd.read_sql_query("SELECT * FROM all_mem", cnx)
 member_list = pd.read_pickle("data/all_mem.pickle")
 member_list = member_list['Member'].tolist()
 member_list = ['All Members'] + member_list
@@ -162,37 +232,39 @@ cat_list = pd.read_pickle("data/all_cat.pickle")
 cat_list = cat_list['Topic'].tolist()
 cat_list = ['All topics (slow loading)'] + cat_list
 
-# tags for topic keywords
+
+
 tags = {
-    'aid for trade':        'aid for trade',
-    'competition':          'competition price control anti-competitive',
-    'customs valuation':    'customs valuation',
-    'ecommerce':            'ecommerce',
-    'environment':          'environment climate polution environmental protection',
-    'financial services':   'financial services banking insurance',
+    'agriculture': 'agriculture',
+    'competition': 'competition',
+    'customs valuation': 'customs valuation',
+    'ecommerce': 'ecommerce',
+    'environment': 'environment',
+    'financial services': 'financial services banking insurance',
     'government procurement': 'government procurement',
-    'intellectual property': 'intellectual property rights',
-    'internal taxation':    'tax vat excise',
-    'msme':                 'micro small and medium enterprises',
-    'other taxes and charges': 'other taxes and charges which are not customs tariffs',
-    'quantitative restriction': 'prohibitions restrictions licensing ban quota',
-    'rules of origin':      'rules of origin',
-    'sector agriculture':   'agriculture forestry finsheries sector',
-    'sector manufacturing': 'manufacturing sector',
-    'sector mining & energy': 'mining and energy',
-    'sps':                  'sps sanitary and phytosanitary',
-    'state-trading & soe': 'state trading state owned enterprises',
-    'subsidies':            'industrial subsidies grant',
-    'tariff':               'tariff duties',
-    'tbt':                  'standards and technical regulations',
-    'trade remedy':         'trade remedies or anti-dumping or contervailing or safegurards',
+    'intellectual property rights': 'intellectual property rights',
+    'msme': 'msme',
+    'quantitative restriction': 'prohibitions, restrictions and licensing',
+    'rules of origin': 'rules of origin',
+    'sps': 'sps',
+    'subsidies': 'industrial subsidies',
+    'tariff': 'tariff or tariff duties',
+    'taxation': 'tax vat excise',
+    'tbt': 'standards and technical regulations',
+    'trade remedy': 'trade remedies or anti-dumping or contervailing or safegurards'
 }
 
 
-#################################################
-##### Dash App
-#################################################
 
+
+
+
+
+
+
+
+
+##### Dash App
 # Hardcoded users (for demo purposes)
 USERS = {"admin": "admin", "w": "w", "wto": "wto"}
 
@@ -238,7 +310,7 @@ app.index_string = """<!DOCTYPE html>
     </body>
 </html>"""
 
-### sidebar
+
 sidebar_header = dbc.Row([
     html.A([dbc.Col(html.Img(src=app.get_asset_url("logo.png"),  width="180px", style={'margin-left':'15px', 'margin-bottom':'50px'}))], href="/page-1"),
     dbc.Col(
@@ -263,11 +335,26 @@ sidebar_header = dbc.Row([
 
 sidebar = html.Div([
                     sidebar_header,
+                    # we wrap the horizontal rule and short blurb in a div that can be
+                    # hidden on a small screen
+                    # html.Div([
+                    #         html.Hr(),
+                    #         html.P(
+                    #             "Download integrated tariff and trade data for research and analysis",
+                    #             # className="lead",
+                    #         ),
+                    #     ],id="blurb",
+                    # ),
+
                     # use the Collapse component to animate hiding / revealing links
                     dbc.Collapse(
                         dbc.Nav([
                                 dbc.NavLink("Search ", href="/page-1", id="page-1-link"),
                                 dbc.NavLink("Question & Answer", href="/page-2", id="page-2-link"),
+                                # dbc.NavLink("Reports - SrReference Tables", href="/page-3", id="page-3-link"),
+                                # dbc.NavLink("Methodology", href="/page-4", id="page-4-link"),
+                                # dbc.NavLink("Help", href="/page-5", id="page-5-link"),
+                                # dbc.NavLink("Browse Sec Reports", href="/page-3", id="page-3-link"),
                                 dbc.NavLink("Browse Topics", href="/page-3", id="page-3-link"),
                                 dbc.NavLink("Report List", href="/page-4", id="page-4-link"),
                                 dbc.NavLink("About", href="/page-5", id="page-5-link"),
@@ -283,6 +370,7 @@ sidebar = html.Div([
             )
 
 content = html.Div(id="page-content")
+
 
 # this callback uses the current pathname to set the active state of the
 # corresponding nav link to true, allowing users to tell see page they are on
@@ -301,6 +389,7 @@ def toggle_active_links(pathname):
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Location(id='logout-url', refresh=False),  # Added logout URL component
+
     # login facet
     dbc.Container(
         dbc.Row(
@@ -308,7 +397,7 @@ app.layout = html.Div([
                 dbc.Card(
                     dbc.CardBody(
                         [
-                            html.H5("Sign in to TPR ReportsData", className="card-title"),
+                            html.H4("Sign in to TPR Reports DB", className="card-title"),
                             html.Br(),
                             dbc.Form(
                                 [
@@ -354,9 +443,9 @@ def update_output(n_clicks, username, password):
     if session.get('authed', False):
         return  {'display': 'none'}, {'display': 'block'}
     else:
+        # return {}, {}, {}, {'display': 'none'}
         return {}, {'display': 'none'}
 
-# render content according to path
 @app.callback(Output("page-content", "children"),
               Output("logout-url", "pathname"),  # Added callback output for logout URL
               [Input("url", "pathname"), Input("logout-url", "pathname")])
@@ -420,7 +509,7 @@ def render_page_content(pathname, logout_pathname):
                     dcc.Markdown(
                         '''
                         Be clear and specific when crafting your query. There's no need to worry about whether the words or phrases will exactly match the text you want to find. 
-                        You can use English, French, Spanish, Arabic, German and other languages. [More information ...](/page-5)
+                        You can use English, French, Spanish, Arabic, German and other languages. [More information ...](/page-4)
 
                         Search query examples:
                         * subsidies and government supports on fossil fuel and energy
@@ -450,6 +539,11 @@ def render_page_content(pathname, logout_pathname):
             ], justify="center"),
         ]), pathname
 
+
+
+
+
+
     elif pathname == "/page-2":
         return dbc.Container([
             html.H6("Q&A with ChatGPT and TPR reports", className="display-about"),
@@ -462,6 +556,8 @@ def render_page_content(pathname, logout_pathname):
                                 dbc.Button(" Query ChatGPT and TPR data ", id="search-button2", n_clicks=0,
                                                 #    className="btn btn-primary mt-3", 
                                             ),
+
+
                             ]
                         ), width=12,
                     ),
@@ -496,7 +592,7 @@ def render_page_content(pathname, logout_pathname):
                     dcc.Markdown(
                         '''
                         This Q&A tool is designed to answer questions related to international trade. It provides responses derived from two sources: ChatGPT and TPR data. The tool offers 
-                        both the answers generated solely by ChatGPT and the responses that source information from TPR reports. [More information ...](/page-5)
+                        both the answers generated solely by ChatGPT and the responses that source information from TPR reports. [More information ...](/page-4)
 
                         Below are some sample questions
 
@@ -604,10 +700,18 @@ def render_page_content(pathname, logout_pathname):
                         dcc.Loading(id="loading3", type="default", children=html.Div(id="search-results3"), fullscreen=False),
                     ], width=12),
             ], justify="center"),
+
         ]), pathname
 
+
+
+
+
+
     elif pathname == "/page-4":
+        # return html.P("This is the content of page 2. Yay!")
         return html.Div([
+                # html.H4('TPR Reports by Member and Year'),
                 html.H6("TPR Reports by Member and Year", className="display-about"),
                 html.P('Each value is a numerical identifier that represents a specific TPR in the document symbol'),
                 dash_table.DataTable(
@@ -622,8 +726,12 @@ def render_page_content(pathname, logout_pathname):
             ]), pathname
     elif pathname == "/page-5":
         return html.Div([
+                    # dbc.Container(
+                    #     [
                             html.H4("About the tools and the TPR report dataset", className="display-about"),
-                             html.Br(),
+                            # html.P("Explore information of the reports in a convinient way...", className="lead"),
+                            # html.Hr(className="my-2"),
+                            html.Br(),
                             dcc.Markdown(markdown_about, id='topic',
                                          style={
                                             "display": "inline-block",
@@ -632,14 +740,29 @@ def render_page_content(pathname, logout_pathname):
                                             "align": "left",
                                             # "verticalAlign": "top"
                                         }),
+                    #     ]
+                    # )
                 ]), pathname
     else:
         return html.P("404: Not found"), pathname
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 #################################################
-#####    Page Search
+#####    Search
 #################################################
 
 # call back for returning results
@@ -672,18 +795,9 @@ def search(n_clicks, search_terms, top):
     # Display the results in a datatable
     return html.Div(style={'width': '100%'},
                      children=[
-                        # html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
-                        # html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
+                        html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
+                        html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
                         html.Br(),
-                        dbc.Row(
-                            [
-                                dbc.Col(html.P('Find ' + str(len(matches)) +" paragraphs, with scores from " + str(df['score'].min()) + ' to ' + str(df['score'].max())), width={"size": 9, "offset": 0}),
-                                dbc.Col(html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank"), width={"size": 3, "offset": 0}),
-                            ],
-                            justify="between",
-                            style={"margin-bottom": "20px"},
-                        ),
-
                         html.Br(),
                         dash_table.DataTable(
                                 id="search-results-table",
@@ -745,7 +859,7 @@ def search(n_clicks, search_terms, top):
             ),  {'display': 'none'}
 
 #################################################
-#####     Page Chat
+#####     Chat page
 #################################################
 
 # call back for returning results
@@ -805,9 +919,18 @@ def chat(n_clicks, query, model):
  
 
 
-#################################################
-#####     Page tags
-#################################################
+
+
+
+
+
+
+
+
+
+
+
+
 
 @app.callback(
     # Output('table', 'data'),
@@ -825,6 +948,8 @@ def update_table(*args):
     tag_clicked = ctx.states[button_id + '.children']
     # print(tag_clicked)
 
+    # filtered_df = search_docs(tags[tag_clicked], top = 100)
+
     df = search_docs(tags[tag_clicked], top = 200)
     
     csv_string = df.to_csv(index=False, encoding='utf-8')
@@ -839,15 +964,9 @@ def update_table(*args):
     # Display the results in a datatable
     return html.Div(style={'width': '100%'},
                      children=[
+                        html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
+                        html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
                         html.Br(),
-                        dbc.Row(
-                            [
-                                dbc.Col(html.P('Find ' + str(len(matches)) +" paragraphs, with scores from " + str(df['score'].min()) + ' to ' + str(df['score'].max())), width={"size": 9, "offset": 0}),
-                                dbc.Col(html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank"), width={"size": 3, "offset": 0}),
-                            ],
-                            justify="between",
-                            style={"margin-bottom": "20px"},
-                        ),
                         html.Br(),
                         dash_table.DataTable(
                                 id="search-results-table",
@@ -912,6 +1031,15 @@ def update_table(*args):
             )
 
 
+
+
+
+
+
+
+
+
+
 #################################################
 # end of function page
 #################################################
@@ -943,7 +1071,28 @@ def update_table(*args):
 
 
 
-#################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# app
 @app.callback(
     Output("collapse", "is_open"),
     [Input("toggle", "n_clicks")],
@@ -953,6 +1102,8 @@ def toggle_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
+
+
 
 if __name__ == '__main__':
     app.run_server(port=8888, debug=True)

@@ -1,7 +1,5 @@
 env
-build
-dist
 test
 *.pyc
-.DS_Store
 .env
+flask_session
