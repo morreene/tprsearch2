@@ -123,3 +123,7 @@ The topics listed below roughly correspond to the sections and subsections found
 | 4\. trade policies by sector     | OTHER                                |                                          |
 | annex                            |                                      |                                          |
 | OTHER                            |                                      |                                          |
+
+## Change log
+* V0.8 (20230626): 3 modules - semantic search, q&a, topics - for testing 
+* V0.9 (20230929): add gtp-4 in q&a 

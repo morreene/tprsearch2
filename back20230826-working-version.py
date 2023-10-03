@@ -18,21 +18,14 @@ import pinecone
 #####     configurations
 #################################################
 
-# ##### openai-mais1
-# API_KEY = "3842bbdef12e406dbaf407d7a133ee7e"
-# RESOURCE_ENDPOINT = "https://openai-mais.openai.azure.com/"
-# openai.api_type = "azure"
-# openai.api_key = API_KEY
-# openai.api_base = RESOURCE_ENDPOINT
-# openai.api_version = "2023-03-15-preview"
+##### openai
+API_KEY = "3842bbdef12e406dbaf407d7a133ee7e"
+RESOURCE_ENDPOINT = "https://openai-mais.openai.azure.com/"
 
-##### openai-mais2
-API_KEY = "d70b34fbd24d4016a5cf88dbc5f91e78"
-RESOURCE_ENDPOINT = "https://openai-mais-2.openai.azure.com/"
 openai.api_type = "azure"
 openai.api_key = API_KEY
 openai.api_base = RESOURCE_ENDPOINT
-openai.api_version = "2023-07-01-preview"
+openai.api_version = "2023-03-15-preview"
 
 ##### pinecone
 index_name = 'semantic-search-openai'
@@ -50,6 +43,7 @@ pinecone.init(
 # connect to index
 index = pinecone.Index(index_name)
 
+
 #################################################
 #####     Functions
 #################################################
@@ -58,7 +52,7 @@ index = pinecone.Index(index_name)
 def search_docs(user_query, top=200):
     xq = get_embedding(
         user_query,
-        engine="test-embedding-ada-002" # engine should be set to the deployment name you chose when you deployed the test-embedding-ada-002 (Version 2) model
+        engine="text-embedding-ada-002" # engine should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
     )
 
     res = index.query([xq], top_k=top, include_metadata=True)
@@ -80,21 +74,21 @@ def search_docs(user_query, top=200):
     # Create a DataFrame from the transformed data
     df = pd.DataFrame(transformed_data)
     # print(df.dtypes)
+    
     df['date'] = df['date'].astype(str)
     
     return df
 
+
 ##### ChatGPT augmented generative question answering
-# def get_completion(prompt, model="gpt-35-turbo"):
-def get_completion(prompt, model="gpt-4"):
-    messages = [{"role": "system", "content":  "You are a Q&A assistant." },
+def get_completion(prompt, model="gpt-35-turbo"):
+    messages = [{ "role": "system", "content":  "You are a Q&A assistant." },
                 {"role": "user", "content": prompt}]
     response = openai.ChatCompletion.create(
         engine=model,
         messages=messages,
-        # temperature=0.8, # this is the degree of randomness of the model's output
-        temperature=0, # this is the degree of randomness of the model's output
-        max_tokens=500,
+        temperature=0.8, # this is the degree of randomness of the model's output
+        max_tokens=400,
         top_p=0.95,
         frequency_penalty=0,
         presence_penalty=0,
@@ -107,7 +101,7 @@ limit = 10000
 def retrieve(query):
     res = openai.Embedding.create(
         input=[query],
-        engine='test-embedding-ada-002'
+        engine='text-embedding-ada-002'
     )
 
     # retrieve from Pinecone
@@ -121,14 +115,12 @@ def retrieve(query):
 
     # build our prompt with the retrieved contexts included
     prompt_start = (
-        # "Answer the following question based on the context provided below, which are the relevant paragraphs from the WTO member's TPR reports. Paragraph start with a country name, a document symbol and a paragraph number. \n\n"+
-        # "In the answers, be sure to add document symbols and paragraph numbers as references for finding in the answer. \n\n"+
+        # "Answer the following question based on the context below, which are the text of WTO Trade Policy Review reports. Add the information source by referring document symbol and paragraph numbers of the reports.\n\n"+
         # "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n"+
         # "Context:\n"
-        "Answer the following question based on the context provided below, which are the relevant paragraphs from the WTO member's TPR reports.  \n\n" +
-        "Paragraph start with a country name, a document symbol and a paragraph number. \n\n" +
-        "In your answers, be sure to add document symbols and paragraph numbers as references for finding in the answer. \n\n" +
-        "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n" +
+        "Answer the following question based on the context provided below, which are the relevant paragraphs from the WTO member's TPR reports. Paragraph start with a country name, a document symbol and a paragraph number. \n\n"+
+        "In the answers, be sure to add document symbols and paragraph numbers as references for finding in the answer. \n\n"+
+        "If you don't know the answer, just say that you don't know. Don't try to make up an answer. Do not answer beyond this context. \n\n"+
         "Context:\n"
     )
     prompt_end = (
@@ -189,7 +181,7 @@ tags = {
     'sector manufacturing': 'manufacturing sector',
     'sector mining & energy': 'mining and energy',
     'sps':                  'sps sanitary and phytosanitary',
-    'state-trading & soe':  'state trading state owned enterprises',
+    'state-trading & soe': 'state trading state owned enterprises',
     'subsidies':            'industrial subsidies grant',
     'tariff':               'tariff duties',
     'tbt':                  'standards and technical regulations',
@@ -283,7 +275,7 @@ sidebar = html.Div([
                             ], vertical=True, pills=False,
                         ), id="collapse",
                     ),
-                    html.Div([html.P("V0.9 (20230929)",
+                    html.Div([html.P("V0.8 (20230626)",
                                 # className="lead",
                             ),],id="blurb-bottom",
                     ),
@@ -486,8 +478,7 @@ def render_page_content(pathname, logout_pathname):
                                 # {"label": "text-ada", "value": 'text-ada-001'},
                                 # {"label": 'text-curie-001', "value": 'text-curie-001'},
                                 # {"label": 'text-davinci-003', "value": 'text-davinci-003'},
-                                {"label": 'ChatGPT 3.5', "value": 'gpt-35-turbo'},
-                                {"label": 'ChatGPT 4', "value": 'gpt-4'},
+                                {"label": 'ChatGPT (gpt-3.5-turbo)', "value": 'gpt-35-turbo'},
                             ],
                             value='gpt-35-turbo',
                             inline=True,
@@ -632,7 +623,7 @@ def render_page_content(pathname, logout_pathname):
     elif pathname == "/page-5":
         return html.Div([
                             html.H4("About the tools and the TPR report dataset", className="display-about"),
-                            html.Br(),
+                             html.Br(),
                             dcc.Markdown(markdown_about, id='topic',
                                          style={
                                             "display": "inline-block",
@@ -657,16 +648,16 @@ def render_page_content(pathname, logout_pathname):
         #  Output("top-space", "style"),
          Output("sample-queries", "style")
          ],
-        [Input("search-button", "n_clicks"),
-         Input('search-box', 'n_submit'), ], 
+        [Input("search-button", "n_clicks")], 
         [State("search-box", "value"),
         State('radio-select-top', 'value')]
         )
-def search(n_clicks, n_submit, search_terms, top):
+def search(n_clicks, search_terms, top):
     # Check if the search button was clicked
-    if (n_clicks <=0 and n_submit is None) or search_terms=='' or search_terms is None:
+    if n_clicks <=0 or search_terms=='' or search_terms is None:
         return "",  None
     else:
+        
         df = search_docs(search_terms, top = top)
         
         csv_string = df.to_csv(index=False, encoding='utf-8')
@@ -678,80 +669,80 @@ def search(n_clicks, n_submit, search_terms, top):
         matches = df[['meta', 'text']]
         matches.columns = ['Meta','Text (Paragraph)']
 
-        # Display the results in a datatable
-        return html.Div(style={'width': '100%'},
-                        children=[
-                            # html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
-                            # html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
-                            html.Br(),
-                            dbc.Row(
-                                [
-                                    dbc.Col(html.P('Find ' + str(len(matches)) +" paragraphs, with scores from " + str(df['score'].min()) + ' to ' + str(df['score'].max())), width={"size": 9, "offset": 0}),
-                                    dbc.Col(html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank"), width={"size": 3, "offset": 0}),
+    # Display the results in a datatable
+    return html.Div(style={'width': '100%'},
+                     children=[
+                        # html.P('Find ' + str(len(matches)) +" paragraphs, with score ranging from " + str(df['score'].min()) + ' to ' + str(df['score'].max())),
+                        # html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank",),
+                        html.Br(),
+                        dbc.Row(
+                            [
+                                dbc.Col(html.P('Find ' + str(len(matches)) +" paragraphs, with scores from " + str(df['score'].min()) + ' to ' + str(df['score'].max())), width={"size": 9, "offset": 0}),
+                                dbc.Col(html.A('Download CSV', id='download-link', download="rawdata.csv", href=csv_string, target="_blank"), width={"size": 3, "offset": 0}),
+                            ],
+                            justify="between",
+                            style={"margin-bottom": "20px"},
+                        ),
+
+                        html.Br(),
+                        dash_table.DataTable(
+                                id="search-results-table",
+                                columns=[{"name": col, "id": col} for col in matches.columns],
+                                data=matches.to_dict("records"),
+
+                                editable=False,
+                                # filter_action="native",
+
+                                sort_action="native",
+                                sort_mode="multi",
+                                
+                                column_selectable=False,
+                                row_selectable=False,
+                                row_deletable=False,
+                                
+                                selected_columns=[],
+                                selected_rows=[],
+                                
+                                page_action="native",
+                                page_current= 0,
+                                page_size= 20,
+                                style_table={'width': '900px'},
+                                style_header={'fontWeight': 'bold'},
+                                style_cell={
+                                    # 'height': 'auto',
+                                    # 'minWidth': '50px', 
+                                    # 'maxWidth': '800px',
+                                    # # 'width': '100px',
+                                    # 'whiteSpace': 'normal',
+                                    'textAlign': 'left',
+                                    'fontSize': '14px',
+                                    'verticalAlign': 'top',
+                                    'whiteSpace': 'pre-line'
+                                },
+                                style_cell_conditional=[
+                                    # {'if': {'column_id': 'Symbol'},
+                                    #  'width': '50px'},
+                                    # {'if': {'column_id': 'Member'},
+                                    #  'width': '90px'},
+                                    # {'if': {'column_id': 'Date'},
+                                    #  'width': '80px'},
+                                    # {'if': {'column_id': 'Section/Topic'},
+                                    #  'width': '200px'},
+                                    {'if': {'column_id': 'Text (Paragraph)'},
+                                    'width': '1000px'},
+                                    # {'if': {'column_id': 'Score'},
+                                    #  'width': '80px', 'textAlign': 'right'},
                                 ],
-                                justify="between",
-                                style={"margin-bottom": "20px"},
-                            ),
-
-                            html.Br(),
-                            dash_table.DataTable(
-                                    id="search-results-table",
-                                    columns=[{"name": col, "id": col} for col in matches.columns],
-                                    data=matches.to_dict("records"),
-
-                                    editable=False,
-                                    # filter_action="native",
-
-                                    sort_action="native",
-                                    sort_mode="multi",
-                                    
-                                    column_selectable=False,
-                                    row_selectable=False,
-                                    row_deletable=False,
-                                    
-                                    selected_columns=[],
-                                    selected_rows=[],
-                                    
-                                    page_action="native",
-                                    page_current= 0,
-                                    page_size= 20,
-                                    style_table={'width': '900px'},
-                                    style_header={'fontWeight': 'bold'},
-                                    style_cell={
-                                        # 'height': 'auto',
-                                        # 'minWidth': '50px', 
-                                        # 'maxWidth': '800px',
-                                        # # 'width': '100px',
-                                        # 'whiteSpace': 'normal',
-                                        'textAlign': 'left',
-                                        'fontSize': '14px',
-                                        'verticalAlign': 'top',
-                                        'whiteSpace': 'pre-line'
-                                    },
-                                    style_cell_conditional=[
-                                        # {'if': {'column_id': 'Symbol'},
-                                        #  'width': '50px'},
-                                        # {'if': {'column_id': 'Member'},
-                                        #  'width': '90px'},
-                                        # {'if': {'column_id': 'Date'},
-                                        #  'width': '80px'},
-                                        # {'if': {'column_id': 'Section/Topic'},
-                                        #  'width': '200px'},
-                                        {'if': {'column_id': 'Text (Paragraph)'},
-                                        'width': '1000px'},
-                                        # {'if': {'column_id': 'Score'},
-                                        #  'width': '80px', 'textAlign': 'right'},
-                                    ],
-                                    style_data_conditional=[
-                                        {
-                                            'if': {'row_index': 'odd'},
-                                            'backgroundColor': 'rgb(250, 250, 250)',
-                                        }
-                                    ],
-                                    style_as_list_view=True,
-                                )
-                            ]
-                ),  {'display': 'none'}
+                                style_data_conditional=[
+                                    {
+                                        'if': {'row_index': 'odd'},
+                                        'backgroundColor': 'rgb(250, 250, 250)',
+                                    }
+                                ],
+                                style_as_list_view=True,
+                            )
+                        ]
+            ),  {'display': 'none'}
 
 #################################################
 #####     Page Chat
@@ -763,17 +754,14 @@ def search(n_clicks, n_submit, search_terms, top):
         #  Output("top-space2", "style"),
          Output("sample-queries2", "style")
          ],
-        [Input("search-button2", "n_clicks"),
-         Input("search-box2", "n_submit")
-         ], 
+        [Input("search-button2", "n_clicks")], 
         [State("search-box2", "value"),
         State('radio-select-top2', 'value')
         ]
         )
-def chat(n_clicks, n_submit, query, model):
+def chat(n_clicks, query, model):
     # Check if the search button was clicked
-    # if (n_clicks <=0 and n_submit is None) or search_terms=='' or search_terms is None:
-    if (n_clicks <=0 and n_submit is None) or query=='' or query is None:
+    if n_clicks <=0 or query=='' or query is None:
         return "",  None
     else:
         # ChatGPT only
@@ -783,14 +771,14 @@ def chat(n_clicks, n_submit, query, model):
                     ---
                     QUESTION: {query}   
                 """
-        chatgpt = get_completion(prompt, model)        
+        chatgpt = get_completion(prompt)        
 
         # chatgpt = complete(search_terms, model)
         # # print(chatgpt)
 
         # ChatGPT plus TPR
         prompt = retrieve(query)
-        chatgpttpr = get_completion(prompt, model)
+        chatgpttpr = get_completion(prompt)
         # query_with_contexts = retrieve(search_terms)
         # chatgpttpr = complete(query_with_contexts, model)
     return html.Div(
