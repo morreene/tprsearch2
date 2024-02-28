@@ -94,7 +94,7 @@ def get_completion(prompt, model="gpt-4"):
         messages=messages,
         # temperature=0.8, # this is the degree of randomness of the model's output
         temperature=0, # this is the degree of randomness of the model's output
-        max_tokens=500,
+        max_tokens=2000,
         top_p=0.95,
         frequency_penalty=0,
         presence_penalty=0,
@@ -114,7 +114,7 @@ def retrieve(query):
     xq = res['data'][0]['embedding']
 
     # get relevant contexts
-    res = index.query(xq, top_k=50, include_metadata=True)
+    res = index.query(xq, top_k=100, include_metadata=True)
     contexts = [
         '('+ x['metadata']['member'] + ') (' + x['metadata']['symbol'] + ') paragraph ' + x['metadata']['text'][0:400] for x in res['matches']
     ]
@@ -212,6 +212,7 @@ Session(server)
 
 # dash app
 external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css']
+# external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = Dash(__name__, server=server, 
         #    external_stylesheets=[dbc.themes.BOOTSTRAP], 
            external_stylesheets = external_stylesheets,
@@ -486,10 +487,14 @@ def render_page_content(pathname, logout_pathname):
                                 # {"label": "text-ada", "value": 'text-ada-001'},
                                 # {"label": 'text-curie-001', "value": 'text-curie-001'},
                                 # {"label": 'text-davinci-003', "value": 'text-davinci-003'},
-                                {"label": 'ChatGPT 3.5', "value": 'gpt-35-turbo'},
-                                {"label": 'ChatGPT 4', "value": 'gpt-4'},
+                                # {"label": 'ChatGPT 3.5', "value": 'gpt-35-turbo'},
+                                # {"label": 'ChatGPT 4', "value": 'gpt-4'},
+                                {"label": 'ChatGPT 3.5 Turbo 16k*', "value": 'gpt-35-turbo-16k'},
+                                # {"label": 'ChatGPT 4', "value": 'gpt-4'},
+
+
                             ],
-                            value='gpt-35-turbo',
+                            value='gpt-35-turbo-16k',
                             inline=True,
                         ),
                         width=True,
@@ -529,9 +534,21 @@ def render_page_content(pathname, logout_pathname):
             html.Br(),
             dbc.Row([ 
                 # html.Div(id="search-results", className="results"),
-                dbc.Col([
-                        dcc.Loading(id="loading2", type="default", children=html.Div(id="search-results2"), fullscreen=False),
-                    ], width=12),
+                # dbc.Col([
+                #         dcc.Loading(id="loading2", type="default", children=html.Div(id="search-results2"), fullscreen=False),
+                #     ], width=12),
+
+                dbc.Col(
+                    dcc.Loading(
+                        children=[
+                            html.Div(id='search-results2')
+                        ],
+                        type="default",
+                    ), 
+                ),
+
+
+
             ], justify="center"),
         ]), pathname
     elif pathname == "/page-3":
@@ -760,14 +777,13 @@ def search(n_clicks, n_submit, search_terms, top):
 # call back for returning results
 @app.callback(
         [Output("search-results2", "children"),  
-        #  Output("top-space2", "style"),
          Output("sample-queries2", "style")
-         ],
+        ],
         [Input("search-button2", "n_clicks"),
          Input("search-box2", "n_submit")
-         ], 
+        ], 
         [State("search-box2", "value"),
-        State('radio-select-top2', 'value')
+         State('radio-select-top2', 'value')
         ]
         )
 def chat(n_clicks, n_submit, query, model):
