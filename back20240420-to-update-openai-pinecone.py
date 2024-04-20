@@ -9,45 +9,59 @@ from dash import html, dcc, dash_table
 import urllib.parse
 
 import pandas as pd
-from openai import AzureOpenAI
-from pinecone import Pinecone, ServerlessSpec
+import openai
+from openai.embeddings_utils import get_embedding #, cosine_similarity
+import pinecone
+
 
 #################################################
 #####     configurations
 #################################################
 
-client = AzureOpenAI(
-  api_key = "d70b34fbd24d4016a5cf88dbc5f91e78",  
-  api_version = "2023-05-15",
-  azure_endpoint ="https://openai-mais-2.openai.azure.com/" 
+# ##### openai-mais1
+# API_KEY = "3842bbdef12e406dbaf407d7a133ee7e"
+# RESOURCE_ENDPOINT = "https://openai-mais.openai.azure.com/"
+# openai.api_type = "azure"
+# openai.api_key = API_KEY
+# openai.api_base = RESOURCE_ENDPOINT
+# openai.api_version = "2023-03-15-preview"
+
+##### openai-mais2
+API_KEY = "d70b34fbd24d4016a5cf88dbc5f91e78"
+RESOURCE_ENDPOINT = "https://openai-mais-2.openai.azure.com/"
+openai.api_type = "azure"
+openai.api_key = API_KEY
+openai.api_base = RESOURCE_ENDPOINT
+openai.api_version = "2023-07-01-preview"
+
+##### pinecone
+index_name = 'semantic-search-openai'
+
+# initialize connection to pinecone (get API key at app.pinecone.io)
+pinecone.init(
+    api_key="b5d40c2b-abda-4590-8cb5-06251507c483",
+    environment="asia-southeast1-gcp-free"  # find next to api key in console
 )
 
-# connect pinecone
-index_name = 'semantic-search-openai'
-pc = Pinecone(api_key='b5d40c2b-abda-4590-8cb5-06251507c483')
+# # check if 'openai' index already exists (only create index if not)
+# if index_name not in pinecone.list_indexes():
+#     pinecone.create_index(index_name, dimension=1536)
+    
 # connect to index
-index = pc.Index(index_name)
+index = pinecone.Index(index_name)
 
 #################################################
 #####     Functions
 #################################################
 
-def get_embedding(text, model="test-embedding-ada-002"): 
-    return client.embeddings.create(input = [text], model=model).data[0].embedding
-
-
 ##### search document data with openai embedding
-def search_docs(user_query, top=50):
+def search_docs(user_query, top=200):
     xq = get_embedding(
         user_query,
-        model="test-embedding-ada-002" # engine should be set to the deployment name you chose when you deployed the test-embedding-ada-002 (Version 2) model
+        engine="test-embedding-ada-002" # engine should be set to the deployment name you chose when you deployed the test-embedding-ada-002 (Version 2) model
     )
 
-    res = index.query(
-                    vector=xq, 
-                    top_k=top, 
-                    include_metadata=True
-                    )
+    res = index.query([xq], top_k=top, include_metadata=True)
 
     data = res.to_dict()
     # Create an empty list to store the transformed data
@@ -71,11 +85,12 @@ def search_docs(user_query, top=50):
     return df
 
 ##### ChatGPT augmented generative question answering
-def get_completion(prompt, model="gpt-35-turbo-16k"):
+# def get_completion(prompt, model="gpt-35-turbo"):
+def get_completion(prompt, model="gpt-4"):
     messages = [{"role": "system", "content":  "You are a Q&A assistant." },
                 {"role": "user", "content": prompt}]
-    response = client.chat.completions.create(
-        model=model,
+    response = openai.ChatCompletion.create(
+        engine=model,
         messages=messages,
         # temperature=0.8, # this is the degree of randomness of the model's output
         temperature=0, # this is the degree of randomness of the model's output
@@ -85,31 +100,21 @@ def get_completion(prompt, model="gpt-35-turbo-16k"):
         presence_penalty=0,
         stop=None
     )
-    # return response.choices[0].message["content"]
-    return response.choices[0].message.content.strip('., ')
+    return response.choices[0].message["content"]
 
 # prompt with context
 limit = 10000
 def retrieve(query):
-    xq = get_embedding(
-        query,
-        model='test-embedding-ada-002'
+    res = openai.Embedding.create(
+        input=[query],
+        engine='test-embedding-ada-002'
     )
 
     # retrieve from Pinecone
-    # xq = res['data'][0]['embedding']
+    xq = res['data'][0]['embedding']
 
     # get relevant contexts
-    # res = index.query(xq, top_k=100, include_metadata=True)
-
-    res = index.query(
-                    vector=xq, 
-                    top_k=100, 
-                    include_metadata=True
-                    )
-
-
-
+    res = index.query(xq, top_k=100, include_metadata=True)
     contexts = [
         '('+ x['metadata']['member'] + ') (' + x['metadata']['symbol'] + ') paragraph ' + x['metadata']['text'][0:400] for x in res['matches']
     ]
@@ -366,13 +371,8 @@ def update_output(n_clicks, username, password):
               [Input("url", "pathname"), Input("logout-url", "pathname")])
 def render_page_content(pathname, logout_pathname):
     if logout_pathname == "/logout":  # Handle logout
-        # session.pop('authed', None)
-        session.clear()  # Clears the entire session
+        session.pop('authed', None)
         return dcc.Location(pathname="/login", id="redirect-to-login"), "/logout"
-
-
-
-
     # elif pathname == "/":
     #     # return html.P("This is the content of the home page!"), pathname
     #     # return dcc.Location(pathname="/page-1", id="redirect-to-login"), "/page-1"  
@@ -807,10 +807,6 @@ def chat(n_clicks, n_submit, query, model):
         # ChatGPT plus TPR
         prompt = retrieve(query)
         chatgpttpr = get_completion(prompt, model)
-
-
-
-
         # query_with_contexts = retrieve(search_terms)
         # chatgpttpr = complete(query_with_contexts, model)
     return html.Div(
