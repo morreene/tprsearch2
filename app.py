@@ -23,7 +23,7 @@ client = AzureOpenAI(
 )
 
 # connect pinecone
-index_name = 'semantic-search-openai'
+index_name = 'tpr-reports'
 pc = Pinecone(api_key='b5d40c2b-abda-4590-8cb5-06251507c483')
 # connect to index
 index = pc.Index(index_name)
